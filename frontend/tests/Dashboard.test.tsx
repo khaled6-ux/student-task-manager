@@ -7,13 +7,13 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-test('renders dashboard empty states and successful API connection', async () => {
+test('renders mock dashboard and successful API connection', async () => {
   const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 'ok' }) })
   vi.stubGlobal('fetch', fetchMock)
   render(<App />)
   expect(screen.getByRole('heading', { name: 'Your semester, organized.' })).toBeInTheDocument()
   expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument()
-  expect(screen.getByText('Your assignments and deadlines will appear here.')).toBeInTheDocument()
+  expect(screen.getByText('Practice integration techniques')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Your courses' })).toBeInTheDocument()
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('API connected'))
   expect(fetchMock).toHaveBeenCalledWith('http://localhost:8000/health', expect.objectContaining({ signal: expect.any(AbortSignal) }))

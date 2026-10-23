@@ -1,5 +1,5 @@
-import { Dashboard } from './features/tasks/Dashboard'
+import { Workspace } from './app/Workspace'
 
 export default function App() {
-  return <Dashboard />
+  return <Workspace />
 }
