@@ -1,10 +1,13 @@
-# Phase 1 foundation
+# Architecture
 
-React + TypeScript + Vite renders an empty dashboard and checks FastAPI liveness.
-FastAPI owns application APIs; SQLAlchemy metadata and a lazy engine/session dependency
-prepare for PostgreSQL. Alembic owns schema migrations. No models or migrations exist yet.
-Supabase Auth and authorization will be implemented in a later phase. Do not expose
-future data routes without token verification and ownership checks.
+React + TypeScript + Vite renders a mock workspace with hash-based navigation.
+FastAPI owns database-backed APIs under `/api/v1`. SQLAlchemy models map profiles,
+courses and tasks to PostgreSQL; Alembic owns reversible schema migrations.
 
-`GET /health` is liveness only, not database readiness. No database connection is opened
-at startup. Dashboard counters are static empty-state placeholders, not database results.
+Supabase access tokens are verified by signature, issuer, audience, timestamps,
+and UUID subject via the project's public JWKS. Every data route scopes operations
+to this verified identity. A composite foreign key also enforces task/course ownership.
+No real Supabase integration or frontend authentication has been configured yet.
+
+`GET /health` is database-independent liveness only. The React mock interface remains
+separate from live data routes. See `phase-2-auth-db.md` for details and security limits.

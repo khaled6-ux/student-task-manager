@@ -2,7 +2,7 @@ name: Phase 1 checks
 
 on:
   push:
-    branches: [main, feat/phase-1-foundation]
+    branches: [main, 'feat/**']
   pull_request:
     branches: [main]
 
@@ -28,6 +28,22 @@ jobs:
       - run: npm run build
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: student
+          POSTGRES_DB: student_tasks_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U student -d student_tasks_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://student@127.0.0.1:5432/student_tasks_test
     defaults:
       run:
         working-directory: backend

@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from functools import lru_cache
 
+from fastapi import HTTPException
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 
@@ -16,5 +17,7 @@ def get_engine() -> Engine:
 
 
 def get_db() -> Iterator[Session]:
+    if not get_settings().database_url:
+        raise HTTPException(status_code=503, detail="Database is not configured")
     with Session(get_engine()) as session:
         yield session

@@ -1,20 +1,26 @@
 # Student Task Manager
 
-A student workspace built with React, TypeScript, Vite, FastAPI, and PostgreSQL.
-Supabase Auth is planned for a later phase.
+A student workspace built with React, TypeScript, Vite, FastAPI, SQLAlchemy,
+Alembic, PostgreSQL, and prepared Supabase JWT verification.
 
-## Phase 1 status
+## Current status
 
-Included: responsive dashboard with empty states, live API connection indicator,
-FastAPI liveness endpoint and API docs, SQLAlchemy base/session scaffolding,
-Alembic configuration, and backend tests. There are no task/course APIs, database
-tables, authentication, or persistence yet. Dashboard counts are placeholders.
+- React mock dashboard, calendar, section list/detail pages, responsive navigation.
+- Backend profile API, owner-scoped course/task CRUD, filtering and pagination.
+- UUID database entities, initial migration, ownership constraints, and RLS enabled.
+- Supabase ES256/RS256 access-token verification via project public JWKS.
+- Frontend and backend automated tests, lint checks, build, GitHub Actions configuration.
+
+The frontend still uses mock coursework. Login screens and live API integration are
+not implemented. No Supabase/production project or credentials have been configured.
+The optional frontend health indicator uses FastAPI, but the mock UI works offline.
 
 ## Requirements
 
 - Node.js 22.12+ (Node 24 recommended) and npm
 - Python 3.12+
-- PostgreSQL is **not required** for this phase
+- PostgreSQL (validated with version 17) for database-backed routes and integration tests
+- An asymmetrically signed Supabase access token for authenticated API use
 
 ## Install
 
@@ -23,16 +29,21 @@ From the repository root:
 ```sh
 cd frontend
 npm ci
-cp .env.example .env
+# Optional: copy .env.example to .env only if no local .env already exists.
 cd ../backend
 python -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-cp ../.env.example .env
+# Copy ../.env.example to .env only if no local .env already exists.
 ```
 
-On Windows, use `.venv\Scripts\python` instead of `.venv/bin/python`.
-The example files contain no real credentials. Never commit `.env` files.
-`VITE_` variables are public browser configuration; never put secrets in them.
+On Windows use `.venv\Scripts\python` instead of `.venv/bin/python`.
+Example files contain no real credentials. Never commit `.env` files or put secrets
+in public `VITE_` variables.
+
+Configure `DATABASE_URL` and `SUPABASE_URL` securely in `backend/.env` before using
+authenticated data APIs. See [Phase 2 setup](docs/phase-2-auth-db.md) for local
+PostgreSQL commands, migrations, API semantics, JWT settings, and Supabase prerequisites.
+No database or authentication setup is needed to browse the mock UI or `/health`.
 
 ## Run locally
 
@@ -40,74 +51,54 @@ In one terminal:
 
 ```sh
 cd backend
+.venv/bin/python -m alembic upgrade head  # When DATABASE_URL is configured
 .venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-In another terminal:
+In another:
 
 ```sh
 cd frontend
 npm run dev -- --host 127.0.0.1
 ```
 
-Open the Vite address printed in the terminal (normally port 5173).
-FastAPI interactive docs are at `/docs` on port 8000.
-`GET /health` returns `{"status":"ok"}` without contacting PostgreSQL.
-It checks process liveness, not database readiness.
-If Vite selects another port, set `CORS_ORIGINS` in `backend/.env` to its origin
-as a JSON array. Restart the backend after environment changes. Use the same
-hostname in CORS configuration as in your browser (the default is `localhost`).
+Use the Vite port printed in the terminal (normally 5173). API documentation is at
+`/docs` on port 8000. Use browser host `localhost` with the default CORS setting;
+if you use `127.0.0.1` or another port, include that exact origin in `CORS_ORIGINS`
+as a JSON array in `backend/.env`, then restart the backend.
+`GET /health` returns `{"status":"ok"}` and checks liveness, not database readiness.
 
 ## Validation
 
 ```sh
-cd backend
-.venv/bin/python -m ruff check .
-.venv/bin/python -m pytest
-.venv/bin/python -m alembic heads
-cd ../frontend
+cd frontend
 npm run lint
 npm test
 npm run build
+cd ../backend
+.venv/bin/python -m ruff check .
+.venv/bin/python -m pytest
+.venv/bin/python -m alembic heads
 ```
 
-Frontend tests exercise dashboard empty states and API success, network failure,
-HTTP failure, and unhealthy responses using Vitest and Testing Library. The
-production build includes TypeScript checks. Backend tests cover the health
-response, OpenAPI registration, and allowed/denied CORS origins. GitHub Actions
-runs both suites, both linters, the production build, and Alembic revision discovery
-on pushes to main/foundation and pull requests targeting main.
+Set `TEST_DATABASE_URL` to a **disposable PostgreSQL database** for the complete
+backend suite. Without it PostgreSQL integration tests are skipped; authentication
+unit tests and health checks still run. The test role needs CREATE SCHEMA. Tests
+migrate and clean up a uniquely named schema, never production tables. CI supplies
+PostgreSQL and runs full validation. The frontend build includes TypeScript checks;
+jsdom tests do not replace browser visual validation.
 
-## Database scaffolding
+## Structure and documentation
 
-`app/db/base.py` owns shared SQLAlchemy metadata. `app/db/session.py` creates an
-engine lazily and supplies a session dependency. No connections are opened at
-application startup. Configure `DATABASE_URL` with a `postgresql+psycopg://` URL
-only when database operations are needed. URL-encode special password characters.
-
-Alembic reads the same settings; it does not embed credentials in `alembic.ini`.
-No initial revision exists because this phase defines no tables. In a later phase,
-import models in `migrations/env.py`, generate and review a revision, then migrate:
-
-```sh
-cd backend
-.venv/bin/python -m alembic revision --autogenerate -m "create initial tables"
-.venv/bin/python -m alembic upgrade head
-```
-
-Those commands require an accessible database and are not needed for Phase 1.
-
-## Structure
-
-- `frontend/src/features/`: dashboard and future auth/course feature locations
-- `frontend/src/lib/`: API utilities
-- `frontend/src/app/`, `components/`, `types/`: shared application structure
-- `backend/app/api/`: HTTP routes
-- `backend/app/core/`: environment configuration
-- `backend/app/db/`: SQLAlchemy metadata and sessions
-- `backend/app/schemas/`, `services/`: future schemas and business operations
-- `backend/migrations/`: Alembic environment and future revisions
-- `backend/tests/`: API tests
-- `docs/architecture.md`: scope and architecture notes
-
-Authentication and ownership enforcement must be added before exposing student data.
+- `frontend/src/app/`: shared layout and hash navigation
+- `frontend/src/features/`: mock dashboard, calendar, sections, future auth
+- `frontend/src/components/`, `types/`, `lib/`: shared UI, types, health API utility
+- `frontend/tests/`: dashboard/navigation/calendar tests
+- `backend/app/api/`: health and authenticated resource routes
+- `backend/app/core/`: settings and verified JWT identity
+- `backend/app/db/`: SQLAlchemy entities, metadata and sessions
+- `backend/app/schemas/`: validated requests, responses, pagination
+- `backend/migrations/`: Alembic environment and initial migration
+- `backend/tests/`: JWT, API, ownership, constraints, and migration tests
+- [Mock UI documentation](docs/mock-workspace-ui.md)
+- [Phase 2 design, commands, API and Supabase checklist](docs/phase-2-auth-db.md)
