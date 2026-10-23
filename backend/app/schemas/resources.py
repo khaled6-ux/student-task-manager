@@ -9,6 +9,7 @@ Name = Annotated[str, Field(min_length=1, max_length=100)]
 Title = Annotated[str, Field(min_length=1, max_length=200)]
 Color = Annotated[str, Field(pattern=r"^#[0-9a-fA-F]{6}$")]
 Status = Literal["todo", "in_progress", "done"]
+Category = Literal["homeworks", "exams", "finals", "projects", "presentations"]
 Priority = Literal["low", "medium", "high"]
 
 
@@ -39,6 +40,7 @@ class TaskCreate(Input):
     title: Title
     description: str | None = Field(default=None, max_length=10000)
     status: Status = "todo"
+    category: Category = "homeworks"
     priority: Priority = "medium"
     due_at: AwareDatetime | None = None
     course_id: UUID | None = None
@@ -48,11 +50,12 @@ class TaskPatch(Input):
     title: Title | None = None
     description: str | None = Field(default=None, max_length=10000)
     status: Status | None = None
+    category: Category | None = None
     priority: Priority | None = None
     due_at: AwareDatetime | None = None
     course_id: UUID | None = None
 
-    @field_validator("title", "status", "priority")
+    @field_validator("title", "status", "priority", "category")
     @classmethod
     def not_null(cls, value):
         if value is None:
@@ -102,6 +105,7 @@ class TaskOut(Output):
     description: str | None
     status: Status
     priority: Priority
+    category: Category
     due_at: datetime | None
     completed_at: datetime | None
 

@@ -278,3 +278,61 @@ def test_database_uuid_and_updated_timestamp(client, db, tokens):
         ).status_code
         == 200
     )
+
+
+@pytest.mark.parametrize("category", ["homeworks", "exams", "finals", "projects", "presentations"])
+def test_category_persistence_filter_and_ownership(client, tokens, category):
+    first, second = headers(tokens, uuid4()), headers(tokens, uuid4())
+    item = create(client, "tasks", first, {"title": "Categorized", "category": category})
+    assert item["category"] == category
+    create(client, "tasks", second, {"title": "Other user", "category": category})
+    listing = client.get("/api/v1/tasks", headers=first, params={"category": category}).json()
+    assert listing["total"] == 1 and listing["items"][0]["id"] == item["id"]
+    updated = client.patch(
+        "/api/v1/tasks/" + item["id"],
+        headers=first,
+        json={"category": "projects" if category != "projects" else "exams"},
+    )
+    assert updated.status_code == 200
+    assert (
+        client.get("/api/v1/tasks/" + item["id"], headers=first).json()["category"]
+        == updated.json()["category"]
+    )
+    assert (
+        client.patch(
+            "/api/v1/tasks/" + item["id"], headers=second, json={"category": "finals"}
+        ).status_code
+        == 404
+    )
+
+
+def test_category_default_and_validation(client, tokens):
+    auth = headers(tokens, uuid4())
+    item = create(client, "tasks", auth, {"title": "Default"})
+    assert item["category"] == "homeworks"
+    for value in ["unknown", None]:
+        assert (
+            client.post(
+                "/api/v1/tasks", headers=auth, json={"title": "Invalid", "category": value}
+            ).status_code
+            == 422
+        )
+        assert (
+            client.patch(
+                "/api/v1/tasks/" + item["id"], headers=auth, json={"category": value}
+            ).status_code
+            == 422
+        )
+    assert (
+        client.get("/api/v1/tasks", headers=auth, params={"category": "unknown"}).status_code == 422
+    )
+
+
+def test_database_category_constraint(db):
+    user = uuid4()
+    db.add(Profile(id=user))
+    db.flush()
+    db.add(Task(user_id=user, title="Invalid", category="unknown"))
+    with pytest.raises(IntegrityError):
+        db.flush()
+    db.rollback()

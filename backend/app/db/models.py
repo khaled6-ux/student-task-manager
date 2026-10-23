@@ -63,6 +63,11 @@ class Task(Timestamps, Base):
             "(status <> 'done' AND completed_at IS NULL)",
             name="ck_tasks_completed",
         ),
+        CheckConstraint(
+            "category IN ('homeworks', 'exams', 'finals', 'projects', 'presentations')",
+            name="ck_tasks_category",
+        ),
+        Index("ix_tasks_user_category_due", "user_id", "category", "due_at"),
         Index("ix_tasks_user_status_due", "user_id", "status", "due_at"),
         Index("ix_tasks_user_course", "user_id", "course_id"),
         Index("ix_tasks_user_priority_due", "user_id", "priority", "due_at"),
@@ -73,6 +78,9 @@ class Task(Timestamps, Base):
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="todo", server_default="todo")
+    category: Mapped[str] = mapped_column(
+        String(20), default="homeworks", server_default="homeworks"
+    )
     priority: Mapped[str] = mapped_column(String(10), default="medium", server_default="medium")
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

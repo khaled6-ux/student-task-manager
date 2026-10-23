@@ -5,15 +5,18 @@ Alembic, PostgreSQL, and prepared Supabase JWT verification.
 
 ## Current status
 
-- React mock dashboard, calendar, section list/detail pages, responsive navigation.
+- Authenticated dashboard, calendar, course CRUD, five task-category sections, task CRUD.
+- Google OAuth via Supabase JS, session management, protected routes and token forwarding.
+- Preserved explicit development-only mock workspace.
 - Backend profile API, owner-scoped course/task CRUD, filtering and pagination.
 - UUID database entities, initial migration, ownership constraints, and RLS enabled.
 - Supabase ES256/RS256 access-token verification via project public JWKS.
 - Frontend and backend automated tests, lint checks, build, GitHub Actions configuration.
 
-The frontend still uses mock coursework. Login screens and live API integration are
-not implemented. No Supabase/production project or credentials have been configured.
-The optional frontend health indicator uses FastAPI, but the mock UI works offline.
+The default frontend uses authenticated API data and requires public Supabase
+configuration. No real Supabase/Google or production project has been configured.
+For the preserved offline demo, explicitly enable VITE_DEMO_MODE=true in development.
+There is no production fallback to fixtures.
 
 ## Requirements
 
@@ -43,7 +46,9 @@ in public `VITE_` variables.
 Configure `DATABASE_URL` and `SUPABASE_URL` securely in `backend/.env` before using
 authenticated data APIs. See [Phase 2 setup](docs/phase-2-auth-db.md) for local
 PostgreSQL commands, migrations, API semantics, JWT settings, and Supabase prerequisites.
-No database or authentication setup is needed to browse the mock UI or `/health`.
+Follow [Phase 3 configuration](docs/phase-3-frontend-integration.md) to enable
+Google sign-in and set the public Vite variables. No database or authentication
+setup is needed for the explicitly enabled development demo or `/health`.
 
 ## Run locally
 
@@ -102,3 +107,4 @@ jsdom tests do not replace browser visual validation.
 - `backend/tests/`: JWT, API, ownership, constraints, and migration tests
 - [Mock UI documentation](docs/mock-workspace-ui.md)
 - [Phase 2 design, commands, API and Supabase checklist](docs/phase-2-auth-db.md)
+- [Phase 3 frontend, Google setup, categories, testing and changed files](docs/phase-3-frontend-integration.md)

@@ -13,6 +13,7 @@ from app.core.auth import current_user
 from app.db.models import Course, Profile, Task
 from app.db.session import get_db
 from app.schemas.resources import (
+    Category,
     CourseCreate,
     CourseOut,
     CoursePatch,
@@ -134,6 +135,7 @@ def list_tasks(
     db: DB,
     limit: Limit = 20,
     offset: Offset = 0,
+    category: Category | None = None,
     status: Status | None = None,
     priority: Priority | None = None,
     course_id: UUID | None = None,
@@ -144,6 +146,7 @@ def list_tasks(
         raise HTTPException(status_code=422, detail="due_after must not exceed due_before")
     statement = select(Task).where(Task.user_id == user)
     for field, value in [
+        (Task.category, category),
         (Task.status, status),
         (Task.priority, priority),
         (Task.course_id, course_id),

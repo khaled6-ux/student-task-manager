@@ -1,5 +1,30 @@
-import { Workspace } from './app/Workspace'
+import { Workspace as DemoWorkspace } from "./app/Workspace";
+import { ConnectedWorkspace } from "./app/ConnectedWorkspace";
+import { AuthProvider, ProtectedRoute } from "./features/auth/AuthProvider";
 
 export default function App() {
-  return <Workspace />
+  if (import.meta.env.VITE_DEMO_MODE === "true") {
+    if (!import.meta.env.DEV)
+      return (
+        <main>
+          <h1>Configuration error</h1>
+          <p>Demo mode is only available in development.</p>
+        </main>
+      );
+    return (
+      <>
+        <p className="preview-notice">
+          Explicit development demo — no account or saved data.
+        </p>
+        <DemoWorkspace />
+      </>
+    );
+  }
+  return (
+    <AuthProvider>
+      <ProtectedRoute>
+        <ConnectedWorkspace />
+      </ProtectedRoute>
+    </AuthProvider>
+  );
 }
