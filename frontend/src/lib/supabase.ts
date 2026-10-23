@@ -1,3 +1,4 @@
+import { apiBaseUrl } from "./client";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let cached: SupabaseClient | undefined;
@@ -9,15 +10,7 @@ export function getSupabaseClient(): SupabaseClient {
     throw new Error(
       "Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to enable sign-in.",
     );
-  const api = new URL(import.meta.env.VITE_API_URL || "http://localhost:8000");
-  if (
-    api.protocol !== "https:" &&
-    !(
-      api.protocol === "http:" &&
-      ["localhost", "127.0.0.1"].includes(api.hostname)
-    )
-  )
-    throw new Error("The API must use HTTPS outside localhost.");
+  apiBaseUrl();
   const parsed = new URL(url);
   if (
     parsed.username ||

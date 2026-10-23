@@ -239,3 +239,11 @@ and cryptographic JWT verification. There is no frontend-to-live-Supabase E2E te
 - `frontend/tsconfig.json`
 - `frontend/tsconfig.tests.json`
 - `frontend/vitest.config.ts`
+
+
+## Preserved snapshot and live readiness audit
+
+This phase was committed as `abc0ad3779c2542b38d0ce9e522e3d7149365e51`.
+Subsequent local readiness fixes and exact project/network/TLS/Google/RLS setup
+instructions are documented in [Live Supabase setup](live-supabase-setup.md).
+That audit is a follow-up commit; the original Phase 3 snapshot is not amended.

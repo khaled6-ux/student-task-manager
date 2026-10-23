@@ -60,6 +60,10 @@ beforeEach(() => {
   vi.stubEnv("VITE_DEMO_MODE", "false");
   vi.stubEnv("VITE_API_URL", "http://localhost:8000");
   window.history.replaceState(null, "", "/");
+  Object.assign(profile, {
+    display_name: "Student",
+    timezone: "Asia/Shanghai",
+  });
   current = session;
   failLoading = false;
   courses = [
@@ -471,3 +475,80 @@ test("session restoration errors remain on the sign-in screen", async () => {
   view.unmount();
   expect(unsubscribe).toHaveBeenCalled();
 });
+
+test("initial auth snapshot does not suppress a session restoration error", async () => {
+  let restore: (value: unknown) => void = () => undefined;
+  auth.getSession.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        restore = resolve;
+      }),
+  );
+  render(<App />);
+  act(() => {
+    current = null;
+    listener("INITIAL_SESSION", null);
+  });
+  await act(async () =>
+    restore({ data: { session: null }, error: new Error("test failure") }),
+  );
+  await screen.findByText(
+    "Unable to restore your session. Please sign in again.",
+  );
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("calendar retains month and day after a task mutation reloads data", async () => {
+  tasks.push({
+    ...tasks[0],
+    id: "november-task",
+    title: "November project",
+    category: "projects",
+    due_at: "2026-11-03T03:00:00Z",
+  });
+  await open();
+  navigate("/calendar");
+  fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+  fireEvent.click(screen.getByRole("button", { name: "2026-11-03, 1 tasks" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Complete November project" }),
+  );
+  await screen.findByRole("button", { name: "Reopen November project" });
+  expect(
+    screen.getByRole("heading", { name: "November 2026" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Tasks for 2026-11-03" }),
+  ).toBeInTheDocument();
+});
+
+test.each([
+  "homeworks",
+  "exams",
+  "finals",
+  "projects",
+  "presentations",
+] as const)(
+  "category page %s shows only its matching API tasks",
+  async (category) => {
+    const item = {
+      ...tasks[0],
+      id: "category-task",
+      title: "Unique category task",
+      category,
+    };
+    tasks = [
+      item,
+      {
+        ...tasks[0],
+        id: "other-category-task",
+        title: "Other category task",
+        category: category === "homeworks" ? "exams" : "homeworks",
+      },
+    ];
+    await open();
+    navigate(`/sections/${category}`);
+    expect(screen.getByText("Unique category task")).toBeInTheDocument();
+    expect(screen.queryByText("Other category task")).not.toBeInTheDocument();
+  },
+);

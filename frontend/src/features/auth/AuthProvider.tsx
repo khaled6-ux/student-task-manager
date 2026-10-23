@@ -31,9 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!client) return;
     let active = true;
     let authEventReceived = false;
-    const { data } = client.auth.onAuthStateChange((_event, next) => {
+    const { data } = client.auth.onAuthStateChange((event, next) => {
       if (active) {
-        authEventReceived = true;
+        // INITIAL_SESSION is a snapshot, not a newer sign-in/sign-out decision.
+        if (event !== "INITIAL_SESSION") authEventReceived = true;
         setSession(next);
         setLoading(false);
       }

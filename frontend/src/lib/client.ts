@@ -7,6 +7,25 @@ import type {
   TaskInput,
 } from "../types/api";
 
+export function apiBaseUrl(
+  base = import.meta.env.VITE_API_URL || "http://localhost:8000",
+): string {
+  const url = new URL(base);
+  if (
+    url.protocol !== "https:" &&
+    !(
+      url.protocol === "http:" &&
+      ["localhost", "127.0.0.1"].includes(url.hostname)
+    )
+  )
+    throw new Error("The API must use HTTPS outside localhost.");
+  if (url.username || url.password || url.search || url.hash)
+    throw new Error(
+      "Use an API URL without embedded credentials, query, or fragment.",
+    );
+  return base.replace(/\/$/, "");
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -21,21 +40,8 @@ export class ApiClient {
     token: () => Promise<string | null>,
     base = import.meta.env.VITE_API_URL || "http://localhost:8000",
   ) {
-    const url = new URL(base);
-    if (
-      url.protocol !== "https:" &&
-      !(
-        url.protocol === "http:" &&
-        ["localhost", "127.0.0.1"].includes(url.hostname)
-      )
-    )
-      throw new Error("The API must use HTTPS outside localhost.");
-    if (url.username || url.password || url.search || url.hash)
-      throw new Error(
-        "Use an API URL without embedded credentials, query, or fragment.",
-      );
     this.token = token;
-    this.base = base.replace(/\/$/, "");
+    this.base = apiBaseUrl(base);
   }
   async request<T>(
     path: string,

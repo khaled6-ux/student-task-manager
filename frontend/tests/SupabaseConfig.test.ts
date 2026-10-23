@@ -38,3 +38,12 @@ test("missing public configuration and accidentally supplied secrets fail closed
   expect(() => getSupabaseClient()).toThrow("never a secret key");
   expect(createClient).not.toHaveBeenCalled();
 });
+
+test("invalid API URLs fail at setup before constructing an auth client", async () => {
+  vi.stubEnv("VITE_SUPABASE_URL", "https://project.example");
+  vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test_fixture");
+  vi.stubEnv("VITE_API_URL", "https://api.example?unexpected=value");
+  const { getSupabaseClient } = await import("../src/lib/supabase");
+  expect(() => getSupabaseClient()).toThrow("without embedded credentials");
+  expect(createClient).not.toHaveBeenCalled();
+});

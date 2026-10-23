@@ -91,7 +91,8 @@ function Pages() {
             </button>
           </div>
         )}
-        {loading ? (
+        {loading && profile && <p role="status">Refreshing workspace…</p>}
+        {loading && !profile ? (
           <p role="status">Loading workspace…</p>
         ) : !profile ? (
           <p>Workspace data is unavailable. Retry loading to continue.</p>
