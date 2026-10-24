@@ -1,9 +1,11 @@
+import { validateProductionConfig } from "./productionConfig";
 import { apiBaseUrl } from "./client";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let cached: SupabaseClient | undefined;
 export function getSupabaseClient(): SupabaseClient {
   if (cached) return cached;
+  if (import.meta.env.PROD) validateProductionConfig(import.meta.env);
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key)

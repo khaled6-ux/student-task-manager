@@ -14,7 +14,23 @@ def get_engine() -> Engine:
     url = get_settings().database_url
     if not url:
         raise RuntimeError("Set DATABASE_URL before using database operations")
-    engine = create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=5)
+    settings = get_settings()
+    settings.validate_runtime()
+    engine = create_engine(
+        url,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=5,
+        pool_timeout=5,
+        connect_args={
+            "connect_timeout": settings.db_connect_timeout_seconds,
+            "options": (
+                f"-c statement_timeout={settings.db_statement_timeout_ms} "
+                f"-c lock_timeout={settings.db_lock_timeout_ms} "
+                "-c idle_in_transaction_session_timeout=15000"
+            ),
+        },
+    )
     if get_settings().performance_enabled:
         instrument_engine(engine)
     return engine

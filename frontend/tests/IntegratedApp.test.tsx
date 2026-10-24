@@ -1023,3 +1023,67 @@ test.each(["en", "ar", "zh-CN"] as const)(
     expect(screen.getByText("Worksheet")).toBeInTheDocument();
   },
 );
+
+test.each(["en", "ar", "zh-CN"] as const)(
+  "%s: task and course modal cancellation/restoration and successful deletion",
+  async (locale) => {
+    await open();
+    fireEvent.change(screen.getByRole("combobox", { name: "Language" }), {
+      target: { value: locale },
+    });
+    const t = (key: MessageKey) => translate(locale, key);
+    const trigger = screen.getByRole("button", {
+      name: `${t("Delete")} Worksheet`,
+    });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog", {
+      name: t("Confirm task deletion"),
+    });
+    expect(
+      within(dialog).getByRole("button", { name: t("Cancel deletion") }),
+    ).toHaveFocus();
+    fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    await waitFor(() => expect(trigger).toHaveFocus());
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("button", { name: t("Confirm delete") }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: t("New task") })).toHaveFocus(),
+    );
+    navigate("/courses");
+    const remove = screen.getByRole("button", {
+      name: `${t("Delete")} Mathematics`,
+    });
+    remove.focus();
+    fireEvent.click(remove);
+    fireEvent.click(screen.getByRole("button", { name: t("Cancel deletion") }));
+    await waitFor(() => expect(remove).toHaveFocus());
+  },
+);
+
+test("unknown mutation outcome blocks further writes until an explicit refresh", async () => {
+  await open();
+  fireEvent.click(screen.getByRole("button", { name: "Edit Worksheet" }));
+  fetchMock.mockImplementationOnce(async () => {
+    throw new TypeError("lost response");
+  });
+  fireEvent.submit(screen.getByRole("form", { name: "Edit task" }));
+  await screen.findAllByText(
+    "The result of this change is unknown. Refresh workspace before making further changes.",
+  );
+  const count = fetchMock.mock.calls.length;
+  fireEvent.submit(screen.getByRole("form", { name: "Edit task" }));
+  await screen.findByText("Refresh workspace before making further changes.");
+  expect(fetchMock).toHaveBeenCalledTimes(count);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Refresh data" })).toBeEnabled(),
+  );
+  fireEvent.submit(screen.getByRole("form", { name: "Edit task" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("form")).not.toBeInTheDocument(),
+  );
+});

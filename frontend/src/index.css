@@ -561,7 +561,30 @@ textarea {
     footer,
     .nav-label,
     .sidebar-note small,
-    .intro > p:last-child
+    .intro > p:last-child,
+    .muted
   ) {
   color: #58695f;
+}
+
+.confirmation-dialog {
+  border: 1px solid #c8d6cd;
+  border-radius: 12px;
+  color: #23332f;
+  background: white;
+  padding: 24px;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.confirmation-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+.confirmation-dialog p {
+  line-height: 1.7;
+}
+.confirmation-dialog:focus-visible {
+  outline: 3px solid #226b55;
+  outline-offset: 2px;
 }

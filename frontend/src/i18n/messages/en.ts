@@ -246,4 +246,8 @@ export const messages = {
   "taskCount.few": "{count} tasks",
   "taskCount.many": "{count} tasks",
   "taskCount.other": "{count} tasks",
+  "Request timed out. Please retry loading.":
+    "Request timed out. Please retry loading.",
+  "The result of this change is unknown. Refresh workspace before making further changes.":
+    "The result of this change is unknown. Refresh workspace before making further changes.",
 } as const;

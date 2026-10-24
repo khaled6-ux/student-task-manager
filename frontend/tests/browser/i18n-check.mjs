@@ -53,6 +53,8 @@ try {
           "course-form",
           "calendar",
           "profile",
+          "delete-task",
+          "delete-course",
         ]) {
           const context = await browser.newContext({
             viewport: { width, height },
@@ -61,6 +63,8 @@ try {
           const page = await context.newPage();
           const errors = [];
           const requests = [];
+          let fixtureTasks = [task];
+          let fixtureCourses = [course];
           page.on("pageerror", (error) => errors.push(error.message));
           await context.addInitScript(
             ({ locale, owner, mode }) => {
@@ -102,6 +106,21 @@ try {
             if (url.origin === new URL(base).origin) return route.continue();
             if (url.pathname.startsWith("/api/v1/")) {
               requests.push(url.pathname);
+              if (route.request().method() === "DELETE") {
+                if (url.pathname.includes("/courses/")) {
+                  fixtureCourses = [];
+                  fixtureTasks = fixtureTasks.map((item) => ({
+                    ...item,
+                    course_id: null,
+                  }));
+                } else fixtureTasks = [];
+                return route.fulfill({
+                  status: 204,
+                  body: "",
+                  headers: { "Access-Control-Allow-Origin": "*" },
+                });
+              }
+
               const item = url.pathname.endsWith("/me")
                 ? {
                     id: owner,
@@ -109,8 +128,8 @@ try {
                     timezone: "Asia/Shanghai",
                   }
                 : url.pathname.endsWith("/courses")
-                  ? { items: [course], total: 1, limit: 100, offset: 0 }
-                  : { items: [task], total: 1, limit: 100, offset: 0 };
+                  ? { items: fixtureCourses, total: 1, limit: 100, offset: 0 }
+                  : { items: fixtureTasks, total: 1, limit: 100, offset: 0 };
               return route.fulfill({
                 json: item,
                 headers: { "Access-Control-Allow-Origin": "*" },
@@ -159,6 +178,65 @@ try {
             }
             if (mode === "calendar")
               await page.locator('nav a[href="#/calendar"]').click();
+            if (mode === "delete-task" || mode === "delete-course") {
+              if (mode === "delete-course")
+                await page.locator('nav a[href="#/courses"]').click();
+              const trigger =
+                mode === "delete-course"
+                  ? page
+                      .locator(".section-cards .actions button:last-child")
+                      .first()
+                  : page
+                      .locator(".task-list .actions button:last-child")
+                      .first();
+              await trigger.focus();
+              await page.keyboard.press("Enter");
+              const dialog = page.getByRole("dialog");
+              const modalAudit = await new AxeBuilder({ page })
+                .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+                .analyze();
+              if (modalAudit.violations.length)
+                throw new Error(
+                  `Modal accessibility: ${JSON.stringify(modalAudit.violations.map((v) => v.id))}`,
+                );
+
+              const cancel = dialog.getByRole("button").first();
+              const confirm = dialog.getByRole("button").last();
+              if (
+                !(await cancel.evaluate((el) => el === document.activeElement))
+              )
+                throw new Error("Dialog initial focus");
+              await page.keyboard.press("Shift+Tab");
+              if (
+                !(await confirm.evaluate((el) => el === document.activeElement))
+              )
+                throw new Error("Dialog backward trap");
+              await page.keyboard.press("Tab");
+              if (
+                !(await cancel.evaluate((el) => el === document.activeElement))
+              )
+                throw new Error("Dialog forward trap");
+              await page.keyboard.press("Escape");
+              if (await dialog.count()) throw new Error("Escape failed");
+              if (
+                !(await trigger.evaluate((el) => el === document.activeElement))
+              )
+                throw new Error("Dialog restore trigger");
+              await page.keyboard.press("Enter");
+              await page.keyboard.press("Shift+Tab");
+              await page.keyboard.press("Enter");
+              await dialog.waitFor({ state: "detached" });
+              const fallback =
+                mode === "delete-course"
+                  ? page.locator("main > button")
+                  : page.locator(".section-heading > button");
+              if (
+                !(await fallback.evaluate(
+                  (el) => el === document.activeElement,
+                ))
+              )
+                throw new Error("Dialog restore after deletion");
+            }
             if (mode === "profile")
               await page.locator('nav a[href="#/profile"]').click();
             if (mode.endsWith("-form")) await page.locator("form").waitFor();

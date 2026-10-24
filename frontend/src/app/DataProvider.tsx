@@ -2,7 +2,7 @@ import type { Mutation } from "./dataContext";
 import { DataContext } from "./dataContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ApiClient } from "../lib/client";
+import { ApiClient, ApiError } from "../lib/client";
 import { useAuth } from "../features/auth/authContext";
 import type { Course, Profile, Task } from "../types/api";
 
@@ -149,6 +149,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
       }
       if (active.current) setNotice("Changes saved.");
+    } catch (error) {
+      if (error instanceof ApiError && error.uncertain) {
+        requiresRefresh.current = true;
+        if (active.current) setError(error.message);
+      }
+      throw error;
     } finally {
       writing.current = false;
       if (active.current) setBusy(false);

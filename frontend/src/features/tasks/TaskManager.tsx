@@ -1,6 +1,7 @@
+import { ConfirmationDialog } from "../../components/ConfirmationDialog";
 import { useI18n } from "../../i18n/useI18n";
 import type { Mutation } from "../../app/dataContext";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useData } from "../../app/dataContext";
 import { categories } from "../../types/api";
@@ -167,6 +168,8 @@ export function TaskManager({
   const { t, message, date } = useI18n();
   const { api, mutate, busy, profile, courses } = useData();
   const [editing, setEditing] = useState<Task | "new" | null>(null);
+  const deleteTrigger = useRef<HTMLElement | null>(null);
+  const createButton = useRef<HTMLButtonElement>(null);
   const [deleting, setDeleting] = useState<Task | null>(null);
   const [error, setError] = useState("");
   const run = async (mutation: Mutation) => {
@@ -184,11 +187,15 @@ export function TaskManager({
     <>
       <div className="section-heading">
         <h2>{t("Tasks")}</h2>
-        <button disabled={busy} onClick={() => setEditing("new")}>
+        <button
+          ref={createButton}
+          disabled={busy}
+          onClick={() => setEditing("new")}
+        >
           {t("New task")}
         </button>
       </div>
-      {error && <p role="alert">{message(error)}</p>}
+      {error && !deleting && <p role="alert">{message(error)}</p>}
       {editing && (
         <TaskForm
           key={editing === "new" ? "new" : editing.id}
@@ -198,33 +205,32 @@ export function TaskManager({
         />
       )}
       {deleting && (
-        <div
-          className="confirm-box"
-          role="dialog"
-          aria-modal="false"
-          aria-label={t("Confirm task deletion")}
+        <ConfirmationDialog
+          title={t("Confirm task deletion")}
+          busy={busy}
+          error={error ? message(error) : ""}
+          cancelLabel={t("Cancel deletion")}
+          confirmLabel={busy ? t("Deleting…") : t("Confirm delete")}
+          returnFocus={deleteTrigger}
+          fallbackFocus={createButton}
+          onCancel={() => {
+            setDeleting(null);
+            setError("");
+          }}
+          onConfirm={() =>
+            void run({
+              kind: "task-delete",
+              id: deleting.id,
+              write: () => api.deleteTask(deleting.id),
+            })
+          }
         >
           <p>
             {t("Delete “{name}”? This cannot be undone.", {
               name: deleting.title,
             })}
           </p>
-          <button
-            disabled={busy}
-            onClick={() =>
-              run({
-                kind: "task-delete",
-                id: deleting.id,
-                write: () => api.deleteTask(deleting.id),
-              })
-            }
-          >
-            {t("Confirm delete")}
-          </button>
-          <button disabled={busy} onClick={() => setDeleting(null)}>
-            {t("Cancel deletion")}
-          </button>
-        </div>
+        </ConfirmationDialog>
       )}
       {!tasks.length && <p className="muted">{t("No tasks here yet.")}</p>}
       <ul className="task-list">
@@ -269,7 +275,8 @@ export function TaskManager({
               </button>
               <button
                 disabled={busy}
-                onClick={() => {
+                onClick={(event) => {
+                  deleteTrigger.current = event.currentTarget;
                   setError("");
                   setDeleting(task);
                 }}
