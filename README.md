@@ -16,7 +16,9 @@ Alembic, PostgreSQL, and prepared Supabase JWT verification.
 - Frontend and backend automated tests, lint checks, build, GitHub Actions configuration.
 
 The default frontend uses authenticated API data and requires public Supabase
-configuration. No real Supabase/Google or production project has been configured.
+configuration. The user has verified real Google/Supabase integration locally with
+two separate accounts. Production infrastructure and domain/security acceptance
+remain unverified; see [release readiness](docs/v1-release-readiness.md).
 For the preserved offline demo, explicitly enable VITE_DEMO_MODE=true in development.
 There is no production fallback to fixtures.
 
@@ -44,6 +46,10 @@ python -m venv .venv
 On Windows use `.venv\Scripts\python` instead of `.venv/bin/python`.
 Example files contain no real credentials. Never commit `.env` files or put secrets
 in public `VITE_` variables.
+
+For local use, select `APP_ENV=development` explicitly. Production startup now
+requires verified database TLS and explicit HTTPS origins; it fails closed when
+those settings are missing. Never relax production checks to run local fixtures.
 
 Configure `DATABASE_URL` and `SUPABASE_URL` securely in `backend/.env` before using
 authenticated data APIs. See [Phase 2 setup](docs/phase-2-auth-db.md) for local
@@ -73,7 +79,9 @@ Use the Vite port printed in the terminal (normally 5173). API documentation is 
 `/docs` on port 8000. Use browser host `localhost` with the default CORS setting;
 if you use `127.0.0.1` or another port, include that exact origin in `CORS_ORIGINS`
 as a JSON array in `backend/.env`, then restart the backend.
-`GET /health` returns `{"status":"ok"}` and checks liveness, not database readiness.
+`GET /health` returns `{"status":"ok"}` and checks process liveness. `GET /ready`
+checks database reachability with a read-only query; it does not certify OAuth,
+permissions, migrations or production readiness.
 
 ## Validation
 
@@ -81,10 +89,11 @@ as a JSON array in `backend/.env`, then restart the backend.
 cd frontend
 npm run lint
 npm test
-npm run build
+# Production build needs explicit HTTPS public configuration. Offline validation:
+VITE_API_URL=https://api.example.test VITE_SUPABASE_URL=https://project.example.test VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_BUILD_PLACEHOLDER VITE_DEMO_MODE=false npm run build
 cd ../backend
 .venv/bin/python -m ruff check .
-.venv/bin/python -m pytest
+APP_ENV=test .venv/bin/python -m pytest
 .venv/bin/python -m alembic heads
 ```
 
@@ -98,9 +107,9 @@ jsdom tests do not replace browser visual validation.
 ## Structure and documentation
 
 - `frontend/src/app/`: shared layout and hash navigation
-- `frontend/src/features/`: mock dashboard, calendar, sections, future auth
+- `frontend/src/features/`: welcome, authentication, live CRUD/dashboard/calendar, and explicit demo views
 - `frontend/src/components/`, `types/`, `lib/`: shared UI, types, health API utility
-- `frontend/tests/`: dashboard/navigation/calendar tests
+- `frontend/tests/`: unit/integration, multilingual, modal and browser regression tests
 - `backend/app/api/`: health and authenticated resource routes
 - `backend/app/core/`: settings and verified JWT identity
 - `backend/app/db/`: SQLAlchemy entities, metadata and sessions
@@ -117,3 +126,5 @@ jsdom tests do not replace browser visual validation.
 - [V1 welcome page, accessibility, preview and validation](docs/v1-landing-page.md)
 
 Multilingual UI: English, Arabic (RTL), and Simplified Chinese are available from the language selector. The browser remembers your selection; changing language does not reload API data. See [V1 internationalization](docs/v1-i18n.md) for architecture, translation maintenance, and browser checks.
+
+- [V1 readiness audit](docs/v1-readiness-audit.md) and [release fixes, CI protection and production verification checklist](docs/v1-release-readiness.md)

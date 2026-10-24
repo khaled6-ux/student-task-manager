@@ -57,6 +57,8 @@ def tokens(monkeypatch):
 @pytest.fixture(scope="session")
 def pg_engine():
     url = os.environ.get("TEST_DATABASE_URL")
+    if not url and os.environ.get("REQUIRE_TEST_DATABASE") == "true":
+        pytest.fail("REQUIRE_TEST_DATABASE is true but TEST_DATABASE_URL is missing")
     if not url:
         pytest.skip("Set TEST_DATABASE_URL for PostgreSQL integration tests")
     admin = create_engine(url)

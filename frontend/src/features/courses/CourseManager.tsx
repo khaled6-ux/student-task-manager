@@ -1,5 +1,6 @@
+import { ConfirmationDialog } from "../../components/ConfirmationDialog";
 import { useI18n } from "../../i18n/useI18n";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useData } from "../../app/dataContext";
 import type { Course, CourseInput } from "../../types/api";
@@ -9,6 +10,8 @@ export function CourseManager({ courseId }: { courseId?: string }) {
   const { t, message, taskCount } = useI18n();
   const { courses, tasks, api, mutate, busy } = useData();
   const [editing, setEditing] = useState<Course | "new" | null>(null);
+  const deleteTrigger = useRef<HTMLElement | null>(null);
+  const createButton = useRef<HTMLButtonElement>(null);
   const [deleting, setDeleting] = useState<Course | null>(null);
   const [error, setError] = useState("");
   const selected = courses.find((course) => course.id === courseId);
@@ -82,6 +85,7 @@ export function CourseManager({ courseId }: { courseId?: string }) {
         <p>{t("Organize tasks by course.")}</p>
       </section>
       <button
+        ref={createButton}
         disabled={busy}
         onClick={() => {
           setError("");
@@ -90,7 +94,7 @@ export function CourseManager({ courseId }: { courseId?: string }) {
       >
         {t("New course")}
       </button>
-      {error && <p role="alert">{message(error)}</p>}
+      {error && !deleting && <p role="alert">{message(error)}</p>}
       {editing && (
         <form
           noValidate
@@ -143,10 +147,19 @@ export function CourseManager({ courseId }: { courseId?: string }) {
         </form>
       )}
       {deleting && (
-        <div
-          className="confirm-box"
-          role="dialog"
-          aria-label={t("Confirm course deletion")}
+        <ConfirmationDialog
+          title={t("Confirm course deletion")}
+          busy={busy}
+          error={error ? message(error) : ""}
+          cancelLabel={t("Cancel deletion")}
+          confirmLabel={busy ? t("Deleting…") : t("Confirm delete course")}
+          returnFocus={deleteTrigger}
+          fallbackFocus={createButton}
+          onCancel={() => {
+            setDeleting(null);
+            setError("");
+          }}
+          onConfirm={() => void remove()}
         >
           <p>
             {t(
@@ -154,13 +167,7 @@ export function CourseManager({ courseId }: { courseId?: string }) {
               { name: deleting.name },
             )}
           </p>
-          <button disabled={busy} onClick={remove}>
-            {busy ? t("Deleting…") : t("Confirm delete course")}
-          </button>
-          <button disabled={busy} onClick={() => setDeleting(null)}>
-            {t("Cancel deletion")}
-          </button>
-        </div>
+        </ConfirmationDialog>
       )}
       {!courses.length && (
         <p className="muted">
@@ -195,7 +202,8 @@ export function CourseManager({ courseId }: { courseId?: string }) {
               </button>
               <button
                 disabled={busy}
-                onClick={() => {
+                onClick={(event) => {
+                  deleteTrigger.current = event.currentTarget;
                   setError("");
                   setDeleting(course);
                 }}

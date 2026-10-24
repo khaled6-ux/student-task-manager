@@ -233,4 +233,7 @@ export const messages = {
   "taskCount.few": "{count} 项任务",
   "taskCount.many": "{count} 项任务",
   "taskCount.other": "{count} 项任务",
+  "Request timed out. Please retry loading.": "请求超时。请重新加载。",
+  "The result of this change is unknown. Refresh workspace before making further changes.":
+    "无法确认此次更改的结果。请先刷新工作台，再进行其他更改。",
 } as const;

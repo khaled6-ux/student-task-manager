@@ -241,4 +241,7 @@ export const messages = {
   "taskCount.few": "{count} مهام",
   "taskCount.many": "{count} مهمة",
   "taskCount.other": "{count} مهمة",
+  "Request timed out. Please retry loading.": "انتهت مهلة الطلب. أعد التحميل.",
+  "The result of this change is unknown. Refresh workspace before making further changes.":
+    "نتيجة هذا التغيير غير معروفة. حدث مساحة العمل قبل إجراء تغييرات أخرى.",
 } as const;

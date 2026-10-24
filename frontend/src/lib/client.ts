@@ -28,9 +28,11 @@ export function apiBaseUrl(
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  uncertain: boolean;
+  constructor(status: number, message: string, uncertain = false) {
     super(message);
     this.status = status;
+    this.uncertain = uncertain;
   }
 }
 export class ApiClient {
@@ -52,7 +54,7 @@ export class ApiClient {
     if (
       !(import.meta.env.DEV && import.meta.env.VITE_DEV_PERF_TIMING === "true")
     ) {
-      return this.send<T>(path, method, body, signal);
+      return this.withDeadline<T>(path, method, body, signal);
     }
     const start = performance.now();
     const route = path.split("?")[0];
@@ -62,13 +64,62 @@ export class ApiClient {
         ? `/${route.split("/")[1]}/:id`
         : "<other>";
     try {
-      return await this.send<T>(path, method, body, signal);
+      return await this.withDeadline<T>(path, method, body, signal);
     } finally {
       console.debug("[dev-performance]", {
         method,
         resource,
         durationMs: Math.round((performance.now() - start) * 100) / 100,
       });
+    }
+  }
+  private async withDeadline<T>(
+    path: string,
+    method: string,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    if (signal?.aborted) controller.abort();
+    signal?.addEventListener("abort", abort, { once: true });
+    const mutation = method !== "GET";
+    let timer: ReturnType<typeof setTimeout>;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(
+          new ApiError(
+            408,
+            mutation
+              ? "The result of this change is unknown. Refresh workspace before making further changes."
+              : "Request timed out. Please retry loading.",
+            mutation,
+          ),
+        );
+      }, 20000);
+    });
+    try {
+      return await Promise.race([
+        this.send<T>(path, method, body, controller.signal),
+        deadline,
+      ]);
+    } catch (error) {
+      if (
+        mutation &&
+        !signal?.aborted &&
+        (!(error instanceof ApiError) || error.status === 0)
+      ) {
+        throw new ApiError(
+          0,
+          "The result of this change is unknown. Refresh workspace before making further changes.",
+          true,
+        );
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer!);
+      signal?.removeEventListener("abort", abort);
     }
   }
   private async send<T>(
