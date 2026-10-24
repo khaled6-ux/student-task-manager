@@ -8,3 +8,7 @@ __pycache__/
 .env.*
 !.env.example
 .ruff_cache/
+backend/Backend.env
+backend/Backend.env
+frontend/Student Task Manager.env
+frontend/Student Task Manager.env.txt
