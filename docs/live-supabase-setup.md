@@ -277,7 +277,7 @@ turning on demo mode to make a live test appear successful.
 Use two independent browser profiles or normal/private sessions. If Google consent
 is in Testing, both accounts must be registered test users. Never share tokens.
 
-1. **Account A login:** select Continue with Google. Confirm return to the app,
+1. **Account A login:** select Get started or Sign in on the welcome page. Confirm return to the app,
    successful profile provisioning, and no configuration/API errors.
 2. **Restoration:** reload the page. Confirm the same user and workspace restore
    without another consent flow.

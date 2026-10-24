@@ -5,6 +5,8 @@ Alembic, PostgreSQL, and prepared Supabase JWT verification.
 
 ## Current status
 
+- Public monochrome welcome page with Google sign-in entry points and an illustrative preview.
+
 - Authenticated dashboard, calendar, course CRUD, five task-category sections, task CRUD.
 - Google OAuth via Supabase JS, session management, protected routes and token forwarding.
 - Preserved explicit development-only mock workspace.
@@ -111,3 +113,5 @@ jsdom tests do not replace browser visual validation.
 - [Live Supabase development setup and two-user acceptance checklist](docs/live-supabase-setup.md)
 
 - [Version 1 performance findings, measurements and diagnostics](docs/v1-performance.md)
+
+- [V1 welcome page, accessibility, preview and validation](docs/v1-landing-page.md)
