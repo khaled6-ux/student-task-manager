@@ -1,8 +1,10 @@
+import { useI18n } from "../../i18n/useI18n";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useData } from "../../app/dataContext";
 
 export function ProfileForm() {
+  const { t, message } = useI18n();
   const { profile, api, mutate, busy } = useData();
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -12,6 +14,10 @@ export function ProfileForm() {
     setSaved(false);
     const form = new FormData(event.currentTarget);
     const timezone = String(form.get("timezone")).trim();
+    if (!event.currentTarget.checkValidity()) {
+      setError("Please check the form values and deadline timezone.");
+      return;
+    }
     try {
       new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();
       await mutate({
@@ -36,19 +42,20 @@ export function ProfileForm() {
   return (
     <>
       <section className="intro">
-        <h1>Profile</h1>
+        <h1>{t("Profile")}</h1>
       </section>
-      <form className="editor card" onSubmit={submit}>
+      <form noValidate className="editor card" onSubmit={submit}>
         <label>
-          Display name
+          {t("Display name")}
           <input
             name="display_name"
+            dir="auto"
             maxLength={100}
             defaultValue={profile?.display_name ?? ""}
           />
         </label>
         <label>
-          Timezone
+          {t("Timezone")}
           <input
             name="timezone"
             required
@@ -56,9 +63,11 @@ export function ProfileForm() {
             defaultValue={profile?.timezone ?? "UTC"}
           />
         </label>
-        {error && <p role="alert">{error}</p>}
-        {saved && <p role="status">Profile saved.</p>}
-        <button disabled={busy}>{busy ? "Saving…" : "Save profile"}</button>
+        {error && <p role="alert">{message(error)}</p>}
+        {saved && <p role="status">{t("Profile saved.")}</p>}
+        <button disabled={busy}>
+          {busy ? t("Saving…") : t("Save profile")}
+        </button>
       </form>
     </>
   );

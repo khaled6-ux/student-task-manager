@@ -1,9 +1,12 @@
+import { formatCalendarDate, weekdays } from "../../i18n/format";
+import { useI18n } from "../../i18n/useI18n";
 import { useState } from "react";
 import { useData } from "../../app/dataContext";
 import { dayKey } from "../../lib/dates";
 import { TaskManager } from "../tasks/TaskManager";
 
 export function LiveCalendar() {
+  const { t, locale, number, taskCount } = useI18n();
   const { tasks, profile } = useData();
   const timeZone = profile?.timezone ?? "UTC";
   const [today] = useState(() => dayKey(new Date().toISOString(), timeZone));
@@ -11,7 +14,8 @@ export function LiveCalendar() {
   const [month, setMonth] = useState(
     () => new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1, 1),
   );
-  const monthLabel = month.toLocaleDateString("en-US", {
+  const monthLabel = month.toLocaleDateString(locale, {
+    calendar: "gregory",
     month: "long",
     year: "numeric",
   });
@@ -28,24 +32,24 @@ export function LiveCalendar() {
   return (
     <>
       <section className="intro">
-        <h1>Calendar</h1>
-        <p>Deadlines shown in {timeZone}.</p>
+        <h1>{t("Calendar")}</h1>
+        <p>{t("Deadlines shown in {zone}.", { zone: timeZone })}</p>
       </section>
       <section className="card">
         <div className="section-heading">
-          <button onClick={() => shift(-1)} aria-label="Previous month">
-            ←
+          <button onClick={() => shift(-1)} aria-label={t("Previous month")}>
+            {locale === "ar" ? "→" : "←"}
           </button>
           <h2 aria-live="polite">{monthLabel}</h2>
-          <button onClick={() => shift(1)} aria-label="Next month">
-            →
+          <button onClick={() => shift(1)} aria-label={t("Next month")}>
+            {locale === "ar" ? "←" : "→"}
           </button>
         </div>
         <div className="calendar-scroll">
           <div className="calendar-grid">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div className="weekday" key={day}>
-                {day}
+            {weekdays(locale).map((label, index) => (
+              <div className="weekday" key={index}>
+                {label}
               </div>
             ))}
             {Array.from({ length: month.getDay() }, (_, i) => (
@@ -68,16 +72,12 @@ export function LiveCalendar() {
                   <button
                     key={date}
                     className="calendar-day"
-                    aria-label={`${date}, ${count} tasks`}
+                    aria-label={`${formatCalendarDate(locale, date, "full")}, ${taskCount(count)}`}
                     aria-pressed={selected === date}
                     onClick={() => setSelected(date)}
                   >
-                    {i + 1}
-                    {count > 0 && (
-                      <small>
-                        {count} task{count > 1 ? "s" : ""}
-                      </small>
-                    )}
+                    {number(i + 1)}
+                    {count > 0 && <small>{taskCount(count)}</small>}
                   </button>
                 );
               },
@@ -86,7 +86,11 @@ export function LiveCalendar() {
         </div>
       </section>
       <section className="card agenda">
-        <h2>Tasks for {selected}</h2>
+        <h2>
+          {t("Tasks for {date}", {
+            date: formatCalendarDate(locale, selected),
+          })}
+        </h2>
         <TaskManager
           tasks={dated.filter(
             (task) => dayKey(task.due_at!, timeZone) === selected,

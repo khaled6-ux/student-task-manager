@@ -115,3 +115,5 @@ jsdom tests do not replace browser visual validation.
 - [Version 1 performance findings, measurements and diagnostics](docs/v1-performance.md)
 
 - [V1 welcome page, accessibility, preview and validation](docs/v1-landing-page.md)
+
+Multilingual UI: English, Arabic (RTL), and Simplified Chinese are available from the language selector. The browser remembers your selection; changing language does not reload API data. See [V1 internationalization](docs/v1-i18n.md) for architecture, translation maintenance, and browser checks.

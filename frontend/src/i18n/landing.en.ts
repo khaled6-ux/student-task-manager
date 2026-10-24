@@ -1,4 +1,4 @@
-// Welcome-page copy is isolated from layout. Add reviewed translations before enabling a locale.
+// Landing structure and authored English copy. Every nonnumeric string is covered by the typed catalogs.
 export const landingEnglish = {
   brand: "Student Task Manager",
   skip: "Skip to content",

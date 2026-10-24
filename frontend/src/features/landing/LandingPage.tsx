@@ -1,7 +1,10 @@
+import { catalogs } from "../../i18n/catalog";
 import { useRef, useState } from "react";
 import type { MouseEvent } from "react";
-import { landingEnglish as copy } from "../../i18n/landing.en";
-import { landingLocale, localeMetadata } from "../../i18n/locales";
+import { landingEnglish } from "../../i18n/landing.en";
+import { useI18n } from "../../i18n/useI18n";
+import { LanguageSelector } from "../../i18n/LanguageSelector";
+import type { MessageKey } from "../../i18n/catalog";
 import "./landing.css";
 
 interface LandingPageProps {
@@ -65,6 +68,8 @@ function focusSection(id: string) {
 }
 
 export function LandingPage({ configured, error, onSignIn }: LandingPageProps) {
+  const { t, message: translateError } = useI18n();
+  const copy = localizeLanding(landingEnglish, t);
   const [connecting, setConnecting] = useState(false);
   const pending = useRef(false);
   const [failure, setFailure] = useState("");
@@ -76,7 +81,7 @@ export function LandingPage({ configured, error, onSignIn }: LandingPageProps) {
     try {
       await onSignIn();
     } catch {
-      setFailure(copy.signInFailed);
+      setFailure(landingEnglish.signInFailed);
     } finally {
       pending.current = false;
       setConnecting(false);
@@ -88,9 +93,13 @@ export function LandingPage({ configured, error, onSignIn }: LandingPageProps) {
     focusSection("welcome-main");
   };
   const disabled = !configured || connecting;
-  const message = configured ? error || failure : copy.unavailable;
+  const message = configured
+    ? error || failure
+      ? translateError(error || failure)
+      : ""
+    : copy.unavailable;
   return (
-    <div className="welcome" {...localeMetadata[landingLocale]}>
+    <div className="welcome">
       <a className="welcome-skip" href="#welcome-main" onClick={skip}>
         {copy.skip}
       </a>
@@ -116,6 +125,7 @@ export function LandingPage({ configured, error, onSignIn }: LandingPageProps) {
               {copy.previewLink}
             </button>
           </nav>
+          <LanguageSelector />
           <button
             type="button"
             className="welcome-signin"
@@ -302,4 +312,22 @@ export function LandingPage({ configured, error, onSignIn }: LandingPageProps) {
       </div>
     </div>
   );
+}
+
+// Only authored landing copy is translated; live user content never enters this function.
+function localizeLanding<T>(value: T, t: (key: MessageKey) => string): T {
+  if (typeof value === "string")
+    return (
+      Object.hasOwn(catalogs.en, value) ? t(value as MessageKey) : value
+    ) as T;
+  if (Array.isArray(value))
+    return value.map((item) => localizeLanding(item, t)) as T;
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        localizeLanding(item, t),
+      ]),
+    ) as T;
+  return value;
 }
