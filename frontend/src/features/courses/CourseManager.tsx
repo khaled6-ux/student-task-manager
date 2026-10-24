@@ -24,11 +24,13 @@ export function CourseManager({ courseId }: { courseId?: string }) {
       return;
     }
     try {
-      await mutate(() =>
-        editing === "new"
-          ? api.createCourse(body)
-          : api.updateCourse((editing as Course).id, body),
-      );
+      await mutate({
+        kind: "course-save",
+        write: () =>
+          editing === "new"
+            ? api.createCourse(body)
+            : api.updateCourse((editing as Course).id, body),
+      });
       setEditing(null);
     } catch (error) {
       setError(
@@ -39,7 +41,11 @@ export function CourseManager({ courseId }: { courseId?: string }) {
   const remove = async () => {
     setError("");
     try {
-      await mutate(() => api.deleteCourse(deleting!.id));
+      await mutate({
+        kind: "course-delete",
+        id: deleting!.id,
+        write: () => api.deleteCourse(deleting!.id),
+      });
       setDeleting(null);
     } catch (error) {
       setError(
@@ -115,7 +121,7 @@ export function CourseManager({ courseId }: { courseId?: string }) {
           </label>
           <div className="actions">
             <button disabled={busy} type="submit">
-              Save course
+              {busy ? "Saving…" : "Save course"}
             </button>
             <button
               type="button"
@@ -138,7 +144,7 @@ export function CourseManager({ courseId }: { courseId?: string }) {
             course.
           </p>
           <button disabled={busy} onClick={remove}>
-            Confirm delete course
+            {busy ? "Deleting…" : "Confirm delete course"}
           </button>
           <button disabled={busy} onClick={() => setDeleting(null)}>
             Cancel deletion

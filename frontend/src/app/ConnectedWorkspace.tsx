@@ -79,8 +79,14 @@ function Pages() {
           <span>
             {profile?.display_name ?? "My workspace"} / {page}
           </span>
-          <button onClick={logout}>Log out</button>
+          <div className="actions">
+            <button disabled={busy || loading} onClick={() => void reload()}>
+              Refresh data
+            </button>
+            <button onClick={logout}>Log out</button>
+          </div>
         </header>
+        {busy && <p role="status">Saving changes…</p>}
         {notice && <p role="status">{notice}</p>}
         {authError && <p role="alert">{authError}</p>}
         {error && (

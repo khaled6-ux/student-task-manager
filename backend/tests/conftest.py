@@ -81,7 +81,9 @@ def pg_engine():
 def db(pg_engine):
     with pg_engine.connect() as connection:
         transaction = connection.begin()
-        with Session(bind=connection, join_transaction_mode="create_savepoint") as session:
+        with Session(
+            bind=connection, join_transaction_mode="create_savepoint", expire_on_commit=False
+        ) as session:
             yield session
         transaction.rollback()
 

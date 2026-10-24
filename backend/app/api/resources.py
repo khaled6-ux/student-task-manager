@@ -42,10 +42,23 @@ def save(db: Session):
         raise HTTPException(status_code=409, detail="Conflicting resource change") from exc
 
 
+def provision_profile(db: Session, user: UUID) -> Profile:
+    # RETURNING avoids rereading a newly inserted profile. A concurrent provision
+    # can win the insert, in which case read its committed row instead.
+    item = db.scalar(
+        insert(Profile)
+        .values(id=user)
+        .on_conflict_do_nothing(
+            index_elements=[Profile.id],
+        )
+        .returning(Profile)
+    )
+    return item if item is not None else db.get(Profile, user)
+
+
 def profile(db: Session, user: UUID) -> Profile:
-    # Concurrency-safe provisioning without copying identity/email from untrusted bodies.
-    db.execute(insert(Profile).values(id=user).on_conflict_do_nothing(index_elements=[Profile.id]))
-    return db.get(Profile, user)
+    existing = db.get(Profile, user)
+    return existing if existing is not None else provision_profile(db, user)
 
 
 def owned(db: Session, model, resource_id: UUID, user: UUID):
@@ -70,8 +83,10 @@ def page(db: Session, statement, limit: int, offset: int):
 
 @router.get("/me", response_model=ProfileOut, tags=["profile"])
 def get_profile(user: User, db: DB):
-    item = profile(db, user)
-    save(db)
+    item = db.get(Profile, user)
+    if item is None:
+        item = provision_profile(db, user)
+        save(db)
     return item
 
 

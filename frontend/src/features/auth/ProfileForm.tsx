@@ -14,12 +14,14 @@ export function ProfileForm() {
     const timezone = String(form.get("timezone")).trim();
     try {
       new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();
-      await mutate(() =>
-        api.updateProfile({
-          display_name: String(form.get("display_name")).trim() || null,
-          timezone,
-        }),
-      );
+      await mutate({
+        kind: "profile-save",
+        write: () =>
+          api.updateProfile({
+            display_name: String(form.get("display_name")).trim() || null,
+            timezone,
+          }),
+      });
       setSaved(true);
     } catch (error) {
       setError(
@@ -56,7 +58,7 @@ export function ProfileForm() {
         </label>
         {error && <p role="alert">{error}</p>}
         {saved && <p role="status">Profile saved.</p>}
-        <button disabled={busy}>Save profile</button>
+        <button disabled={busy}>{busy ? "Saving…" : "Save profile"}</button>
       </form>
     </>
   );

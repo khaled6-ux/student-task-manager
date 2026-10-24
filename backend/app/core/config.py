@@ -1,11 +1,14 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    app_env: Literal["development", "test", "production"] = "production"
+    dev_performance_timing: bool = False
     app_name: str = "Student Task Manager"
     database_url: str | None = None
     supabase_url: str | None = None
@@ -15,6 +18,10 @@ class Settings(BaseSettings):
         env_file=Path(__file__).resolve().parents[2] / ".env",
         extra="ignore",
     )
+
+    @property
+    def performance_enabled(self) -> bool:
+        return self.app_env == "development" and self.dev_performance_timing
 
     @field_validator("supabase_url")
     @classmethod

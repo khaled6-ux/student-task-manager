@@ -1,3 +1,4 @@
+import type { Mutation } from "../../app/dataContext";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useData } from "../../app/dataContext";
@@ -45,9 +46,11 @@ function TaskForm({
             ? task.due_at
             : instantFromLocal(local),
       };
-      await mutate(() =>
-        task ? api.updateTask(task.id, body) : api.createTask(body),
-      );
+      await mutate({
+        kind: "task-save",
+        write: () =>
+          task ? api.updateTask(task.id, body) : api.createTask(body),
+      });
       close();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Unable to save task.");
@@ -153,10 +156,10 @@ export function TaskManager({
   const [editing, setEditing] = useState<Task | "new" | null>(null);
   const [deleting, setDeleting] = useState<Task | null>(null);
   const [error, setError] = useState("");
-  const run = async (write: () => Promise<unknown>) => {
+  const run = async (mutation: Mutation) => {
     setError("");
     try {
-      await mutate(write);
+      await mutate(mutation);
       setDeleting(null);
     } catch (error) {
       setError(
@@ -191,7 +194,13 @@ export function TaskManager({
           <p>Delete “{deleting.title}”? This cannot be undone.</p>
           <button
             disabled={busy}
-            onClick={() => run(() => api.deleteTask(deleting.id))}
+            onClick={() =>
+              run({
+                kind: "task-delete",
+                id: deleting.id,
+                write: () => api.deleteTask(deleting.id),
+              })
+            }
           >
             Confirm delete
           </button>
@@ -231,11 +240,13 @@ export function TaskManager({
               <button
                 disabled={busy}
                 onClick={() =>
-                  run(() =>
-                    api.updateTask(task.id, {
-                      status: task.status === "done" ? "todo" : "done",
-                    }),
-                  )
+                  run({
+                    kind: "task-save",
+                    write: () =>
+                      api.updateTask(task.id, {
+                        status: task.status === "done" ? "todo" : "done",
+                      }),
+                  })
                 }
               >
                 {task.status === "done" ? "Reopen" : "Complete"} {task.title}
