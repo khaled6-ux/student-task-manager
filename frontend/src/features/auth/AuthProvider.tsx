@@ -1,3 +1,4 @@
+import { LandingPage } from "../landing/LandingPage";
 import { AuthContext, useAuth } from "./authContext";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
@@ -111,20 +112,11 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     );
   if (!auth.session)
     return (
-      <main className="login-panel card">
-        <p className="eyebrow">STUDENT WORKSPACE</p>
-        <h1>Make room for what matters.</h1>
-        <p>Sign in to organize your courses and deadlines.</p>
-        {auth.error && <p role="alert">{auth.error}</p>}
-        {auth.configured ? (
-          <button onClick={auth.signIn}>Continue with Google</button>
-        ) : (
-          <p>
-            Authentication is not configured. See
-            docs/phase-3-frontend-integration.md.
-          </p>
-        )}
-      </main>
+      <LandingPage
+        configured={auth.configured}
+        error={auth.error}
+        onSignIn={auth.signIn}
+      />
     );
   return <>{children}</>;
 }

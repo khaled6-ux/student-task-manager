@@ -179,9 +179,14 @@ test("protects routes and starts Google OAuth without fetching private data", as
   current = null;
   render(<App />);
   const button = await screen.findByRole("button", {
-    name: "Continue with Google",
+    name: "Get started",
   });
-  expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("navigation", { name: "Welcome navigation" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("navigation", { name: "Main navigation" }),
+  ).not.toBeInTheDocument();
   expect(fetchMock).not.toHaveBeenCalled();
   fireEvent.click(button);
   expect(auth.signInWithOAuth).toHaveBeenCalledWith({
@@ -221,7 +226,7 @@ test("auth events refresh bearer tokens and sign-out removes protected content",
   );
   await screen.findByRole("button", { name: "Reopen Worksheet" });
   fireEvent.click(screen.getByRole("button", { name: "Log out" }));
-  await screen.findByRole("button", { name: "Continue with Google" });
+  await screen.findByRole("button", { name: "Get started" });
   expect(screen.queryByText("Worksheet")).not.toBeInTheDocument();
   expect(auth.signOut).toHaveBeenCalled();
 });
@@ -239,9 +244,7 @@ test("displays sign-in and sign-out errors without fabricating a session", async
   current = null;
   auth.signInWithOAuth.mockResolvedValue({ error: new Error("test failure") });
   render(<App />);
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Continue with Google" }),
-  );
+  fireEvent.click(await screen.findByRole("button", { name: "Get started" }));
   await screen.findByText("Google sign-in failed. Please try again.");
   emit(session);
   await screen.findByText("Worksheet");
@@ -257,7 +260,9 @@ test("missing configuration and API failures never fall back to demo data", asyn
   });
   const view = render(<App />);
   expect(
-    await screen.findByText("Missing public configuration"),
+    await screen.findByText(
+      "Sign-in is unavailable in this environment. Please try again later.",
+    ),
   ).toBeInTheDocument();
   expect(
     screen.queryByText("Practice integration techniques"),
@@ -479,7 +484,7 @@ test("session restoration errors remain on the sign-in screen", async () => {
     "Unable to restore your session. Please sign in again.",
   );
   expect(
-    screen.getByRole("button", { name: "Continue with Google" }),
+    screen.getByRole("button", { name: "Get started" }),
   ).toBeInTheDocument();
   expect(fetchMock).not.toHaveBeenCalled();
   view.unmount();
@@ -774,4 +779,20 @@ test("failed course write keeps the form and data without a reload", async () =>
     screen.queryByRole("button", { name: "Edit Not saved" }),
   ).not.toBeInTheDocument();
   expect(fetchMock.mock.calls.map(([, init]) => init.method)).toEqual(["POST"]);
+});
+
+test("a restored authenticated session bypasses the welcome page and preserves a protected deep link", async () => {
+  window.history.replaceState(null, "", "/#/calendar");
+  render(<App />);
+  expect(
+    screen.queryByRole("heading", { name: "Less chaos. More progress." }),
+  ).not.toBeInTheDocument();
+  await screen.findByRole("heading", { name: "Calendar" });
+  expect(
+    screen.queryByRole("navigation", { name: "Welcome navigation" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("navigation", { name: "Main navigation" }),
+  ).toBeInTheDocument();
+  expect(window.location.hash).toBe("#/calendar");
 });
