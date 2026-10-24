@@ -109,3 +109,5 @@ jsdom tests do not replace browser visual validation.
 - [Phase 2 design, commands, API and Supabase checklist](docs/phase-2-auth-db.md)
 - [Phase 3 frontend, Google setup, categories, testing and changed files](docs/phase-3-frontend-integration.md)
 - [Live Supabase development setup and two-user acceptance checklist](docs/live-supabase-setup.md)
+
+- [Version 1 performance findings, measurements and diagnostics](docs/v1-performance.md)

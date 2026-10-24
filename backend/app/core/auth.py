@@ -8,6 +8,7 @@ from jwt import PyJWKClient
 from jwt.exceptions import PyJWKClientConnectionError, PyJWTError
 
 from app.core.config import get_settings
+from app.core.performance import measure
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -33,19 +34,21 @@ def current_user(
         raise HTTPException(status_code=503, detail="Authentication is not configured")
     issuer = settings.supabase_url.rstrip("/") + "/auth/v1"
     try:
-        key = (
-            get_jwks_client(issuer + "/.well-known/jwks.json")
-            .get_signing_key_from_jwt(credentials.credentials)
-            .key
-        )
-        claims = jwt.decode(
-            credentials.credentials,
-            key,
-            algorithms=["ES256", "RS256"],
-            audience=settings.supabase_jwt_audience,
-            issuer=issuer,
-            options={"require": ["exp", "iat", "sub", "iss", "aud"]},
-        )
+        with measure("auth_key"):
+            key = (
+                get_jwks_client(issuer + "/.well-known/jwks.json")
+                .get_signing_key_from_jwt(credentials.credentials)
+                .key
+            )
+        with measure("jwt"):
+            claims = jwt.decode(
+                credentials.credentials,
+                key,
+                algorithms=["ES256", "RS256"],
+                audience=settings.supabase_jwt_audience,
+                issuer=issuer,
+                options={"require": ["exp", "iat", "sub", "iss", "aud"]},
+            )
         return UUID(claims["sub"])
     except PyJWKClientConnectionError as exc:
         raise HTTPException(status_code=503, detail="Authentication provider unavailable") from exc

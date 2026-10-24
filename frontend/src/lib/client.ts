@@ -49,6 +49,34 @@ export class ApiClient {
     body?: unknown,
     signal?: AbortSignal,
   ): Promise<T> {
+    if (
+      !(import.meta.env.DEV && import.meta.env.VITE_DEV_PERF_TIMING === "true")
+    ) {
+      return this.send<T>(path, method, body, signal);
+    }
+    const start = performance.now();
+    const route = path.split("?")[0];
+    const resource = ["/me", "/courses", "/tasks"].includes(route)
+      ? route
+      : /^\/(tasks|courses)\/[^/]+$/.test(route)
+        ? `/${route.split("/")[1]}/:id`
+        : "<other>";
+    try {
+      return await this.send<T>(path, method, body, signal);
+    } finally {
+      console.debug("[dev-performance]", {
+        method,
+        resource,
+        durationMs: Math.round((performance.now() - start) * 100) / 100,
+      });
+    }
+  }
+  private async send<T>(
+    path: string,
+    method: string,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<T> {
     let token: string | null;
     try {
       token = await this.token();

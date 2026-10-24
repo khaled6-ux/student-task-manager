@@ -19,6 +19,9 @@ from app.db.base import Base
 
 
 class Timestamps:
+    # PostgreSQL RETURNING supplies generated timestamps before the commit.
+    __mapper_args__ = {"eager_defaults": True}
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

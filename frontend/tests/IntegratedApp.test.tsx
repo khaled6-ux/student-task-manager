@@ -147,6 +147,12 @@ beforeEach(() => {
     const index = store.findIndex((item) => item.id === id);
     if (index < 0) return response({}, 404);
     if (method === "DELETE") {
+      if (path.startsWith("/courses/"))
+        tasks = tasks.map((task) =>
+          task.course_id === id
+            ? { ...task, course_id: null, updated_at: "2026-10-24T00:00:00Z" }
+            : task,
+        );
       store.splice(index, 1);
       return response(null, 204);
     }
@@ -270,6 +276,7 @@ test("missing configuration and API failures never fall back to demo data", asyn
 
 test("creates, edits, completes, and confirms deletion of a persisted task", async () => {
   await open();
+  fetchMock.mockClear();
   fireEvent.click(screen.getByRole("button", { name: "New task" }));
   let form = screen.getByRole("form", { name: "Create task" });
   fireEvent.change(within(form).getByLabelText("Title"), {
@@ -321,6 +328,9 @@ test("creates, edits, completes, and confirms deletion of a persisted task", asy
       screen.queryByRole("button", { name: "Edit Updated project" }),
     ).not.toBeInTheDocument(),
   );
+  expect(
+    fetchMock.mock.calls.filter(([, init]) => init?.method === "GET"),
+  ).toHaveLength(0);
 });
 
 test("validates task forms and surfaces server failures", async () => {
@@ -552,3 +562,216 @@ test.each([
     expect(screen.queryByText("Other category task")).not.toBeInTheDocument();
   },
 );
+
+test("course creation uses the confirmed response, saves immediately and does not refetch", async () => {
+  await open();
+  navigate("/courses");
+  fireEvent.click(screen.getByRole("button", { name: "New course" }));
+  const form = screen.getByRole("form", { name: "Create course" });
+  fireEvent.change(within(form).getByLabelText("Name"), {
+    target: { value: "Physics" },
+  });
+  fetchMock.mockClear();
+  let finish: (value: Response) => void = () => undefined;
+  fetchMock.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  act(() => {
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+  });
+  expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  expect(screen.getByText("Saving changes…")).toBeInTheDocument();
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  expect(
+    screen.queryByRole("button", { name: "Edit Physics" }),
+  ).not.toBeInTheDocument();
+  await act(async () =>
+    finish(
+      await response(
+        { ...courses[0], id: "new-confirmed", name: "Physics (server)" },
+        201,
+      ),
+    ),
+  );
+  await screen.findByRole("button", { name: "Edit Physics (server)" });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText("Saving changes…")).not.toBeInTheDocument();
+});
+
+test("course update, profile update and empty course deletion avoid unrelated reads", async () => {
+  courses.push({ ...courses[0], id: "empty-course", name: "Empty course" });
+  await open();
+  navigate("/courses");
+  fetchMock.mockClear();
+  fireEvent.click(screen.getByRole("button", { name: "Edit Mathematics" }));
+  const form = screen.getByRole("form", { name: "Edit course" });
+  fireEvent.change(within(form).getByLabelText("Name"), {
+    target: { value: "Advanced Mathematics" },
+  });
+  fireEvent.submit(form);
+  await screen.findByRole("button", { name: "Edit Advanced Mathematics" });
+  expect(fetchMock.mock.calls.map(([, init]) => init.method)).toEqual([
+    "PATCH",
+  ]);
+  navigate("/profile");
+  fetchMock.mockClear();
+  fireEvent.change(screen.getByLabelText("Display name"), {
+    target: { value: "Pat" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+  await screen.findByText("Pat / Profile");
+  expect(fetchMock.mock.calls.map(([, init]) => init.method)).toEqual([
+    "PATCH",
+  ]);
+  navigate("/courses");
+  fetchMock.mockClear();
+  fireEvent.click(screen.getByRole("button", { name: "Delete Empty course" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirm delete course" }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", { name: "Delete Empty course" }),
+    ).not.toBeInTheDocument(),
+  );
+  expect(fetchMock.mock.calls.map(([, init]) => init.method)).toEqual([
+    "DELETE",
+  ]);
+});
+
+test("course deletion refreshes only linked tasks, keeping server timestamps", async () => {
+  await open();
+  navigate("/courses");
+  fetchMock.mockClear();
+  fireEvent.click(screen.getByRole("button", { name: "Delete Mathematics" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirm delete course" }),
+  );
+  await screen.findByText("No courses yet. Create your first course.");
+  await waitFor(() =>
+    expect(screen.queryByText("Saving changes…")).not.toBeInTheDocument(),
+  );
+  expect(
+    fetchMock.mock.calls.map(([url, init]) => [
+      new URL(url).pathname,
+      init.method,
+    ]),
+  ).toEqual([
+    ["/api/v1/courses/course-1", "DELETE"],
+    ["/api/v1/tasks", "GET"],
+  ]);
+  navigate("/");
+  expect(screen.getByText("No course · 1 tasks")).toBeInTheDocument();
+});
+
+test("failed task write retains data and form, reenables save and performs no GET", async () => {
+  await open();
+  fetchMock.mockClear();
+  fireEvent.click(screen.getByRole("button", { name: "Edit Worksheet" }));
+  const form = screen.getByRole("form", { name: "Edit task" });
+  fireEvent.change(within(form).getByLabelText("Title"), {
+    target: { value: "Unsaved title" },
+  });
+  fetchMock.mockImplementationOnce(() => response({}, 503));
+  fireEvent.submit(form);
+  await screen.findByText(
+    "The service is not configured or is temporarily unavailable.",
+  );
+  expect(screen.getByRole("button", { name: "Save task" })).toBeEnabled();
+  expect(screen.getByText("Worksheet")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Edit Unsaved title" }),
+  ).not.toBeInTheDocument();
+  expect(fetchMock.mock.calls.map(([, init]) => init.method)).toEqual([
+    "PATCH",
+  ]);
+});
+
+test("successful course delete with failed linked read does not repeat deletion", async () => {
+  await open();
+  navigate("/courses");
+  fetchMock.mockClear();
+  failLoading = true;
+  fireEvent.click(screen.getByRole("button", { name: "Delete Mathematics" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirm delete course" }),
+  );
+  await screen.findByText(
+    "Course deleted, but linked tasks could not be refreshed. Retry loading before making further changes.",
+  );
+  expect(
+    screen.queryByRole("button", { name: "Delete Mathematics" }),
+  ).not.toBeInTheDocument();
+
+  const callsAfterDelete = fetchMock.mock.calls.length;
+  navigate("/");
+  fireEvent.click(screen.getByRole("button", { name: "Complete Worksheet" }));
+  await screen.findByText("Refresh workspace before making further changes.");
+  expect(fetchMock).toHaveBeenCalledTimes(callsAfterDelete);
+  failLoading = false;
+  fireEvent.click(screen.getByRole("button", { name: "Retry loading" }));
+  await waitFor(() =>
+    expect(screen.queryByText("Refreshing workspace…")).not.toBeInTheDocument(),
+  );
+  expect(
+    fetchMock.mock.calls.filter(([, init]) => init.method === "DELETE"),
+  ).toHaveLength(1);
+});
+
+test("a mutation response arriving after a user switch cannot populate the next user's cache", async () => {
+  await open();
+  navigate("/courses");
+  fireEvent.click(screen.getByRole("button", { name: "New course" }));
+  const form = screen.getByRole("form", { name: "Create course" });
+  fireEvent.change(within(form).getByLabelText("Name"), {
+    target: { value: "Private A" },
+  });
+  let finish: (value: Response) => void = () => undefined;
+  const oldCourse = { ...courses[0], id: "late-private", name: "Private A" };
+  fetchMock.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  fireEvent.submit(form);
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled(),
+  );
+  courses = [];
+  tasks = [];
+  emit({ ...session, user: { ...session.user, id: "other-user" } });
+  await screen.findByText("No courses yet. Create your first course.");
+  await act(async () => finish(await response(oldCourse, 201)));
+  expect(
+    screen.queryByRole("button", { name: "Edit Private A" }),
+  ).not.toBeInTheDocument();
+});
+
+test("failed course write keeps the form and data without a reload", async () => {
+  await open();
+  navigate("/courses");
+  fireEvent.click(screen.getByRole("button", { name: "New course" }));
+  const form = screen.getByRole("form", { name: "Create course" });
+  fireEvent.change(within(form).getByLabelText("Name"), {
+    target: { value: "Not saved" },
+  });
+  fetchMock.mockClear();
+  fetchMock.mockImplementationOnce(() => response({}, 503));
+  fireEvent.submit(form);
+  await screen.findByText(
+    "The service is not configured or is temporarily unavailable.",
+  );
+  expect(screen.getByRole("button", { name: "Save course" })).toBeEnabled();
+  expect(
+    screen.getByRole("button", { name: "Edit Mathematics" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Edit Not saved" }),
+  ).not.toBeInTheDocument();
+  expect(fetchMock.mock.calls.map(([, init]) => init.method)).toEqual(["POST"]);
+});

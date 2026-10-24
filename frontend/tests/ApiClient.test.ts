@@ -73,3 +73,41 @@ test("date-only grouping respects profile timezone and DST boundaries", () => {
   );
   expect(() => instantFromLocal("invalid")).toThrow("Choose a valid");
 });
+
+test("development timing redacts identifiers, queries, bodies and tokens and is off in production", async () => {
+  const debug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, json: async () => ({}) }),
+  );
+  vi.stubEnv("VITE_DEV_PERF_TIMING", "true");
+  vi.stubEnv("DEV", true);
+  try {
+    const api = new ApiClient(async () => "private-test-token");
+    await api.request("/tasks/private-id?title=private-query", "PATCH", {
+      title: "private-body",
+    });
+    expect(debug).toHaveBeenCalledTimes(1);
+    expect(debug.mock.calls[0][1]).toMatchObject({
+      method: "PATCH",
+      resource: "/tasks/:id",
+    });
+    const logged = JSON.stringify(debug.mock.calls);
+    for (const secret of [
+      "private-test-token",
+      "private-id",
+      "private-query",
+      "private-body",
+    ])
+      expect(logged).not.toContain(secret);
+    debug.mockClear();
+    vi.stubEnv("DEV", false);
+    await api.request("/me");
+    expect(debug).not.toHaveBeenCalled();
+  } finally {
+    debug.mockRestore();
+    vi.unstubAllEnvs();
+  }
+});
