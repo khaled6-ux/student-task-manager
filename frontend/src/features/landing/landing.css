@@ -668,3 +668,44 @@
   width: 12px;
   height: 12px;
 }
+
+.welcome .language-selector {
+  color: #444;
+  flex-shrink: 0;
+}
+.welcome .language-selector select {
+  border-color: #ccc;
+  color: #222;
+}
+.welcome-header {
+  flex-wrap: wrap;
+  gap: 16px;
+}
+[dir="rtl"] .welcome {
+  font-family: "Noto Sans Arabic", Tahoma, system-ui, sans-serif;
+}
+[dir="rtl"] .welcome h1,
+[dir="rtl"] .welcome-eyebrow {
+  letter-spacing: normal;
+}
+[dir="rtl"] .welcome-arrow {
+  transform: scaleX(-1);
+}
+[dir="rtl"] .welcome-demo-sidebar {
+  border-right: 0;
+  border-inline-end: 1px solid #e8e8e8;
+}
+@media (max-width: 600px) {
+  .welcome-header {
+    justify-content: space-between;
+  }
+  .welcome-header .welcome-brand {
+    flex-basis: 100%;
+  }
+  .welcome .language-selector {
+    font-size: 12px;
+  }
+  .welcome .language-selector select {
+    max-width: 115px;
+  }
+}

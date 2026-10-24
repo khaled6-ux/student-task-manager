@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/useI18n";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useData } from "../../app/dataContext";
@@ -5,6 +6,7 @@ import type { Course, CourseInput } from "../../types/api";
 import { TaskManager } from "../tasks/TaskManager";
 
 export function CourseManager({ courseId }: { courseId?: string }) {
+  const { t, message, taskCount } = useI18n();
   const { courses, tasks, api, mutate, busy } = useData();
   const [editing, setEditing] = useState<Course | "new" | null>(null);
   const [deleting, setDeleting] = useState<Course | null>(null);
@@ -21,6 +23,10 @@ export function CourseManager({ courseId }: { courseId?: string }) {
     };
     if (!body.name) {
       setError("Enter a course name.");
+      return;
+    }
+    if (!event.currentTarget.checkValidity()) {
+      setError("Please check the form values and deadline timezone.");
       return;
     }
     try {
@@ -57,8 +63,8 @@ export function CourseManager({ courseId }: { courseId?: string }) {
     return (
       <>
         <section className="intro">
-          <h1>{selected?.name ?? "Course not found"}</h1>
-          <a href="#/courses">All courses</a>
+          <h1>{selected?.name ?? t("Course not found")}</h1>
+          <a href="#/courses">{t("All courses")}</a>
         </section>
         {selected && (
           <section className="card">
@@ -72,8 +78,8 @@ export function CourseManager({ courseId }: { courseId?: string }) {
   return (
     <>
       <section className="intro">
-        <h1>Courses</h1>
-        <p>Organize tasks by course.</p>
+        <h1>{t("Courses")}</h1>
+        <p>{t("Organize tasks by course.")}</p>
       </section>
       <button
         disabled={busy}
@@ -82,21 +88,23 @@ export function CourseManager({ courseId }: { courseId?: string }) {
           setEditing("new");
         }}
       >
-        New course
+        {t("New course")}
       </button>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{message(error)}</p>}
       {editing && (
         <form
+          noValidate
           className="editor card"
           key={editing === "new" ? "new" : editing.id}
-          aria-label={editing === "new" ? "Create course" : "Edit course"}
+          aria-label={editing === "new" ? t("Create course") : t("Edit course")}
           onSubmit={submit}
         >
-          <h2>{editing === "new" ? "New course" : "Edit course"}</h2>
+          <h2>{editing === "new" ? t("New course") : t("Edit course")}</h2>
           <label>
-            Name
+            {t("Name")}
             <input
               name="name"
+              dir="auto"
               required
               maxLength={100}
               defaultValue={editing === "new" ? "" : editing.name}
@@ -104,15 +112,16 @@ export function CourseManager({ courseId }: { courseId?: string }) {
             />
           </label>
           <label>
-            Code
+            {t("Code")}
             <input
               name="code"
+              dir="auto"
               maxLength={30}
               defaultValue={editing === "new" ? "" : (editing.code ?? "")}
             />
           </label>
           <label>
-            Color
+            {t("Color")}
             <input
               type="color"
               name="color"
@@ -121,14 +130,14 @@ export function CourseManager({ courseId }: { courseId?: string }) {
           </label>
           <div className="actions">
             <button disabled={busy} type="submit">
-              {busy ? "Saving…" : "Save course"}
+              {busy ? t("Saving…") : t("Save course")}
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={() => setEditing(null)}
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </div>
         </form>
@@ -137,22 +146,26 @@ export function CourseManager({ courseId }: { courseId?: string }) {
         <div
           className="confirm-box"
           role="dialog"
-          aria-label="Confirm course deletion"
+          aria-label={t("Confirm course deletion")}
         >
           <p>
-            Delete “{deleting.name}”? Its tasks will be retained without a
-            course.
+            {t(
+              "Delete “{name}”? Its tasks will be retained without a course.",
+              { name: deleting.name },
+            )}
           </p>
           <button disabled={busy} onClick={remove}>
-            {busy ? "Deleting…" : "Confirm delete course"}
+            {busy ? t("Deleting…") : t("Confirm delete course")}
           </button>
           <button disabled={busy} onClick={() => setDeleting(null)}>
-            Cancel deletion
+            {t("Cancel deletion")}
           </button>
         </div>
       )}
       {!courses.length && (
-        <p className="muted">No courses yet. Create your first course.</p>
+        <p className="muted">
+          {t("No courses yet. Create your first course.")}
+        </p>
       )}
       <div className="section-cards">
         {courses.map((course) => (
@@ -166,8 +179,9 @@ export function CourseManager({ courseId }: { courseId?: string }) {
             </h2>
             <p>{course.code}</p>
             <small>
-              {tasks.filter((task) => task.course_id === course.id).length}{" "}
-              tasks
+              {taskCount(
+                tasks.filter((task) => task.course_id === course.id).length,
+              )}
             </small>
             <div className="actions">
               <button
@@ -177,7 +191,7 @@ export function CourseManager({ courseId }: { courseId?: string }) {
                   setEditing(course);
                 }}
               >
-                Edit {course.name}
+                {t("Edit")} {course.name}
               </button>
               <button
                 disabled={busy}
@@ -186,7 +200,7 @@ export function CourseManager({ courseId }: { courseId?: string }) {
                   setDeleting(course);
                 }}
               >
-                Delete {course.name}
+                {t("Delete")} {course.name}
               </button>
             </div>
           </article>

@@ -10,6 +10,9 @@ import {
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import App from "../src/App";
+import { translate } from "../src/i18n/catalog";
+import type { MessageKey } from "../src/i18n/catalog";
+import { setLocale } from "../src/i18n/useI18n";
 import { getSupabaseClient } from "../src/lib/supabase";
 import type { Course, Task } from "../src/types/api";
 
@@ -56,6 +59,8 @@ const navigate = (path: string) =>
   });
 
 beforeEach(() => {
+  localStorage.clear();
+  setLocale("en");
   vi.setSystemTime(new Date("2026-10-23T04:00:00Z"));
   vi.stubEnv("VITE_DEMO_MODE", "false");
   vi.stubEnv("VITE_API_URL", "http://localhost:8000");
@@ -164,6 +169,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   cleanup();
+  setLocale("en");
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   vi.clearAllMocks();
@@ -431,9 +437,13 @@ test("calendar groups API deadlines by profile timezone and supports month navig
       }),
     );
   }
-  fireEvent.click(screen.getByRole("button", { name: "2026-10-23, 1 tasks" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Friday, October 23, 2026, 1 task" }),
+  );
   expect(screen.getByText("Worksheet")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "2026-10-22, 0 tasks" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Thursday, October 22, 2026, 0 tasks" }),
+  );
   expect(screen.queryByText("Worksheet")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Next month" }));
   expect(
@@ -524,7 +534,9 @@ test("calendar retains month and day after a task mutation reloads data", async 
   await open();
   navigate("/calendar");
   fireEvent.click(screen.getByRole("button", { name: "Next month" }));
-  fireEvent.click(screen.getByRole("button", { name: "2026-11-03, 1 tasks" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Tuesday, November 3, 2026, 1 task" }),
+  );
   fireEvent.click(
     screen.getByRole("button", { name: "Complete November project" }),
   );
@@ -533,7 +545,7 @@ test("calendar retains month and day after a task mutation reloads data", async 
     screen.getByRole("heading", { name: "November 2026" }),
   ).toBeInTheDocument();
   expect(
-    screen.getByRole("heading", { name: "Tasks for 2026-11-03" }),
+    screen.getByRole("heading", { name: "Tasks for November 3, 2026" }),
   ).toBeInTheDocument();
 });
 
@@ -670,7 +682,7 @@ test("course deletion refreshes only linked tasks, keeping server timestamps", a
     ["/api/v1/tasks", "GET"],
   ]);
   navigate("/");
-  expect(screen.getByText("No course · 1 tasks")).toBeInTheDocument();
+  expect(screen.getByText("No course · 1 task")).toBeInTheDocument();
 });
 
 test("failed task write retains data and form, reenables save and performs no GET", async () => {
@@ -796,3 +808,218 @@ test("a restored authenticated session bypasses the welcome page and preserves a
   ).toBeInTheDocument();
   expect(window.location.hash).toBe("#/calendar");
 });
+
+test.each(["en", "ar", "zh-CN"] as const)(
+  "%s: live dashboard, CRUD, category, calendar and profile retain canonical data",
+  async (locale) => {
+    setLocale(locale);
+    const t = (key: MessageKey) => translate(locale, key);
+    render(<App />);
+    await screen.findByRole("heading", {
+      name: t("Your semester, organized."),
+    });
+    expect(document.documentElement.dir).toBe(locale === "ar" ? "rtl" : "ltr");
+    expect(screen.getByText("Worksheet")).toBeInTheDocument();
+    // Creation and editing preserve mixed-language content and API enum values.
+    fireEvent.click(screen.getByRole("button", { name: t("New task") }));
+    let form = screen.getByRole("form", { name: t("Create task") });
+    fireEvent.change(within(form).getByLabelText(t("Title")), {
+      target: { value: "مشروع 中文 project" },
+    });
+    fireEvent.change(within(form).getByLabelText(t("Category")), {
+      target: { value: "projects" },
+    });
+    fireEvent.change(within(form).getByLabelText(t("Priority")), {
+      target: { value: "high" },
+    });
+    fireEvent.submit(form);
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: `${t("Edit")} مشروع 中文 project`,
+      }),
+    );
+    form = screen.getByRole("form", { name: t("Edit task") });
+    fireEvent.change(within(form).getByLabelText(t("Description")), {
+      target: { value: "Description وصف 说明" },
+    });
+    fireEvent.submit(form);
+    await waitFor(() =>
+      expect(
+        tasks.find((task) => task.title === "مشروع 中文 project"),
+      ).toMatchObject({
+        category: "projects",
+        priority: "high",
+        description: "Description وصف 说明",
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("form")).not.toBeInTheDocument(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `${t("Complete")} مشروع 中文 project`,
+      }),
+    );
+    await screen.findByRole("button", {
+      name: `${t("Reopen")} مشروع 中文 project`,
+    });
+    navigate("/sections/projects");
+    expect(screen.queryByText("Worksheet")).not.toBeInTheDocument();
+    expect(screen.getByText("مشروع 中文 project")).toBeInTheDocument();
+    navigate("/courses");
+    fireEvent.click(screen.getByRole("button", { name: t("New course") }));
+    form = screen.getByRole("form", { name: t("Create course") });
+    fireEvent.change(within(form).getByLabelText(t("Name")), {
+      target: { value: "علوم Science 科学" },
+    });
+    fireEvent.submit(form);
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: `${t("Edit")} علوم Science 科学`,
+      }),
+    );
+    form = screen.getByRole("form", { name: t("Edit course") });
+    fireEvent.change(within(form).getByLabelText(t("Name")), {
+      target: { value: "علوم Science 科学 II" },
+    });
+    fireEvent.submit(form);
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: `${t("Delete")} علوم Science 科学 II`,
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: t("Confirm delete course") }),
+    );
+    await waitFor(() =>
+      expect(
+        courses.some((course) => course.name === "علوم Science 科学 II"),
+      ).toBe(false),
+    );
+    navigate("/calendar");
+    const label = new Intl.DateTimeFormat(locale, {
+      dateStyle: "full",
+      calendar: "gregory",
+    }).format(new Date("2026-10-23T12:00:00"));
+    const count =
+      locale === "en" ? "1 task" : locale === "ar" ? "مهمة واحدة" : "1 项任务";
+    fireEvent.click(screen.getByRole("button", { name: `${label}, ${count}` }));
+    expect(screen.getByText("Worksheet")).toBeInTheDocument(); // Oct 22 UTC is Oct 23 in Shanghai.
+    navigate("/profile");
+    fireEvent.change(screen.getByLabelText(t("Timezone")), {
+      target: { value: "invalid/zone" },
+    });
+    fireEvent.submit(
+      screen.getByRole("button", { name: t("Save profile") }).closest("form")!,
+    );
+    await screen.findByText(
+      t("Enter a valid IANA timezone, such as Asia/Shanghai."),
+    );
+  },
+);
+
+test.each(["ar", "zh-CN"] as const)(
+  "%s: switching languages preserves unsaved forms, errors and cached data without requests",
+  async (locale) => {
+    await open();
+    fireEvent.click(screen.getByRole("button", { name: "New task" }));
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Untranslated 任務 مهمة" },
+    });
+    const calls = fetchMock.mock.calls.length;
+    fireEvent.change(screen.getByRole("combobox", { name: "Language" }), {
+      target: { value: locale },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(calls);
+    const t = (key: MessageKey) => translate(locale, key);
+    expect(screen.getByLabelText(t("Title"))).toHaveValue(
+      "Untranslated 任務 مهمة",
+    );
+    fireEvent.change(screen.getByLabelText(t("Title")), {
+      target: { value: "   " },
+    });
+    fireEvent.submit(screen.getByRole("form", { name: t("Create task") }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      t("Enter a task title."),
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: t("Language") }), {
+      target: { value: "en" },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a task title.");
+    expect(fetchMock).toHaveBeenCalledTimes(calls);
+  },
+);
+
+test.each(["ar", "zh-CN"] as const)(
+  "%s: language survives logout, Google login, token refresh and restored sessions",
+  async (locale) => {
+    await open();
+    fireEvent.change(screen.getByRole("combobox", { name: "Language" }), {
+      target: { value: locale },
+    });
+    const t = (key: MessageKey) => translate(locale, key);
+    fireEvent.click(screen.getByRole("button", { name: t("Log out") }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: t("Get started") }),
+    );
+    expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "google",
+      options: { redirectTo: window.location.origin + "/" },
+    });
+    emit(session);
+    await screen.findByRole("heading", {
+      name: t("Your semester, organized."),
+    });
+    emit({ ...session, access_token: "refreshed-i18n-test-token" });
+    expect(screen.getByRole("combobox", { name: t("Language") })).toHaveValue(
+      locale,
+    );
+    cleanup();
+    render(<App />);
+    await screen.findByRole("heading", {
+      name: t("Your semester, organized."),
+    });
+    expect(screen.getByRole("combobox", { name: t("Language") })).toHaveValue(
+      locale,
+    );
+  },
+);
+
+test.each(["en", "ar", "zh-CN"] as const)(
+  "%s: localized pending/error states survive a language change during a failed save",
+  async (locale) => {
+    await open();
+    fireEvent.click(screen.getByRole("button", { name: "New task" }));
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Unchanged user text" },
+    });
+    let finish: (value: Response) => void = () => {};
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    fireEvent.submit(screen.getByRole("form", { name: "Create task" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Language" }), {
+      target: { value: locale },
+    });
+    const t = (key: MessageKey) => translate(locale, key);
+    expect(screen.getByRole("button", { name: t("Saving…") })).toBeDisabled();
+    expect(screen.getByText(t("Saving changes…"))).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([, init]) => init?.method === "POST"),
+      ).toBe(true),
+    );
+    await act(async () => finish(await response({}, 503)));
+    await screen.findByText(
+      t("The service is not configured or is temporarily unavailable."),
+    );
+    expect(screen.getByRole("button", { name: t("Save task") })).toBeEnabled();
+    expect(screen.getByLabelText(t("Title"))).toHaveValue(
+      "Unchanged user text",
+    );
+    expect(screen.getByText("Worksheet")).toBeInTheDocument();
+  },
+);

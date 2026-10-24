@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/useI18n";
 import type { Mutation } from "../../app/dataContext";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -21,6 +22,7 @@ function TaskForm({
   category?: Category;
   close: () => void;
 }) {
+  const { t, message } = useI18n();
   const { api, mutate, courses, busy } = useData();
   const [error, setError] = useState("");
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -30,6 +32,10 @@ function TaskForm({
     const title = String(form.get("title")).trim();
     if (!title) {
       setError("Enter a task title.");
+      return;
+    }
+    if (!event.currentTarget.checkValidity()) {
+      setError("Please check the form values and deadline timezone.");
       return;
     }
     try {
@@ -58,16 +64,18 @@ function TaskForm({
   };
   return (
     <form
+      noValidate
       className="editor card"
       onSubmit={submit}
-      aria-label={task ? "Edit task" : "Create task"}
+      aria-label={task ? t("Edit task") : t("Create task")}
     >
-      <h2>{task ? "Edit task" : "New task"}</h2>
-      {error && <p role="alert">{error}</p>}
+      <h2>{task ? t("Edit task") : t("New task")}</h2>
+      {error && <p role="alert">{message(error)}</p>}
       <label>
-        Title
+        {t("Title")}
         <input
           name="title"
+          dir="auto"
           defaultValue={task?.title}
           required
           maxLength={200}
@@ -75,31 +83,32 @@ function TaskForm({
         />
       </label>
       <label>
-        Description
+        {t("Description")}
         <textarea
           name="description"
+          dir="auto"
           defaultValue={task?.description ?? ""}
           maxLength={10000}
         />
       </label>
       <div className="form-grid">
         <label>
-          Category
+          {t("Category")}
           <select
             name="category"
             defaultValue={task?.category ?? category ?? "homeworks"}
           >
             {categories.map((value) => (
               <option key={value} value={value}>
-                {value[0].toUpperCase() + value.slice(1)}
+                {t(value)}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Course
+          {t("Course")}
           <select name="course_id" defaultValue={task?.course_id ?? ""}>
-            <option value="">No course</option>
+            <option value="">{t("No course")}</option>
             {courses.map((course) => (
               <option key={course.id} value={course.id}>
                 {course.name}
@@ -108,25 +117,28 @@ function TaskForm({
           </select>
         </label>
         <label>
-          Status
+          {t("Status")}
           <select name="status" defaultValue={task?.status ?? "todo"}>
-            <option value="todo">To do</option>
-            <option value="in_progress">In progress</option>
-            <option value="done">Done</option>
+            <option value="todo">{t("To do")}</option>
+            <option value="in_progress">{t("In progress")}</option>
+            <option value="done">{t("Done")}</option>
           </select>
         </label>
         <label>
-          Priority
+          {t("Priority")}
           <select name="priority" defaultValue={task?.priority ?? "medium"}>
-            {["low", "medium", "high"].map((value) => (
-              <option key={value}>{value}</option>
+            {(["low", "medium", "high"] as const).map((value) => (
+              <option key={value} value={value}>
+                {t(value)}
+              </option>
             ))}
           </select>
         </label>
       </div>
       <label>
-        Deadline ({Intl.DateTimeFormat().resolvedOptions().timeZone}; your
-        browser timezone)
+        {t("Deadline ({zone}; your browser timezone)", {
+          zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        })}
         <input
           name="due_at"
           type="datetime-local"
@@ -135,10 +147,10 @@ function TaskForm({
       </label>
       <div className="actions">
         <button disabled={busy} type="submit">
-          {busy ? "Saving…" : "Save task"}
+          {busy ? t("Saving…") : t("Save task")}
         </button>
         <button type="button" disabled={busy} onClick={close}>
-          Cancel
+          {t("Cancel")}
         </button>
       </div>
     </form>
@@ -152,6 +164,7 @@ export function TaskManager({
   tasks: Task[];
   category?: Category;
 }) {
+  const { t, message, date } = useI18n();
   const { api, mutate, busy, profile, courses } = useData();
   const [editing, setEditing] = useState<Task | "new" | null>(null);
   const [deleting, setDeleting] = useState<Task | null>(null);
@@ -170,12 +183,12 @@ export function TaskManager({
   return (
     <>
       <div className="section-heading">
-        <h2>Tasks</h2>
+        <h2>{t("Tasks")}</h2>
         <button disabled={busy} onClick={() => setEditing("new")}>
-          New task
+          {t("New task")}
         </button>
       </div>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{message(error)}</p>}
       {editing && (
         <TaskForm
           key={editing === "new" ? "new" : editing.id}
@@ -189,9 +202,13 @@ export function TaskManager({
           className="confirm-box"
           role="dialog"
           aria-modal="false"
-          aria-label="Confirm task deletion"
+          aria-label={t("Confirm task deletion")}
         >
-          <p>Delete “{deleting.title}”? This cannot be undone.</p>
+          <p>
+            {t("Delete “{name}”? This cannot be undone.", {
+              name: deleting.title,
+            })}
+          </p>
           <button
             disabled={busy}
             onClick={() =>
@@ -202,37 +219,32 @@ export function TaskManager({
               })
             }
           >
-            Confirm delete
+            {t("Confirm delete")}
           </button>
           <button disabled={busy} onClick={() => setDeleting(null)}>
-            Cancel deletion
+            {t("Cancel deletion")}
           </button>
         </div>
       )}
-      {!tasks.length && <p className="muted">No tasks here yet.</p>}
+      {!tasks.length && <p className="muted">{t("No tasks here yet.")}</p>}
       <ul className="task-list">
         {tasks.map((task) => (
           <li key={task.id}>
             <div>
               <strong>{task.title}</strong>
               <small>
-                {task.category} · {task.priority} ·{" "}
-                {task.status.replace("_", " ")} ·{" "}
+                {t(task.category)} · {t(task.priority)} · {t(task.status)} ·{" "}
                 {courses.find((course) => course.id === task.course_id)?.name ??
-                  "No course"}
+                  t("No course")}
               </small>
               {task.description && <p>{task.description}</p>}
               <small>
                 {task.due_at ? (
                   <time dateTime={task.due_at}>
-                    {new Intl.DateTimeFormat(undefined, {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                      timeZone: profile?.timezone ?? "UTC",
-                    }).format(new Date(task.due_at))}
+                    {date(task.due_at, profile?.timezone ?? "UTC")}
                   </time>
                 ) : (
-                  "No deadline"
+                  t("No deadline")
                 )}
               </small>
             </div>
@@ -249,10 +261,11 @@ export function TaskManager({
                   })
                 }
               >
-                {task.status === "done" ? "Reopen" : "Complete"} {task.title}
+                {task.status === "done" ? t("Reopen") : t("Complete")}{" "}
+                {task.title}
               </button>
               <button disabled={busy} onClick={() => setEditing(task)}>
-                Edit {task.title}
+                {t("Edit")} {task.title}
               </button>
               <button
                 disabled={busy}
@@ -261,7 +274,7 @@ export function TaskManager({
                   setDeleting(task);
                 }}
               >
-                Delete {task.title}
+                {t("Delete")} {task.title}
               </button>
             </div>
           </li>

@@ -42,7 +42,9 @@ test("calendar filters tasks by date and switches months", async () => {
   expect(
     screen.getByText("Practice integration techniques"),
   ).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "2026-10-26, 1 tasks" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Monday, October 26, 2026, 1 task" }),
+  );
   expect(screen.getByText("Review sorting algorithms")).toBeInTheDocument();
   expect(
     screen.queryByText("Practice integration techniques"),

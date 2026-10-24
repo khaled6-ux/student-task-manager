@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/useI18n";
 import { LandingPage } from "../landing/LandingPage";
 import { AuthContext, useAuth } from "./authContext";
 import { useEffect, useState } from "react";
@@ -103,11 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 export function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const auth = useAuth();
   if (auth.loading)
     return (
       <main className="login-panel" role="status">
-        Restoring your session…
+        {t("Restoring your session…")}
       </main>
     );
   if (!auth.session)

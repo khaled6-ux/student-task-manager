@@ -469,3 +469,99 @@ button:disabled {
     font-size: 12px;
   }
 }
+
+/* Logical layout follows document direction; the DOM and keyboard order stay stable. */
+.sidebar {
+  border-right: 0;
+  border-inline-end: 1px solid #e3eae6;
+}
+.calendar-day {
+  text-align: start;
+}
+.language-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+}
+.language-selector select {
+  width: auto;
+  max-width: 150px;
+  padding: 8px;
+}
+.layout header {
+  min-height: 90px;
+  height: auto;
+  gap: 16px;
+  padding-block: 16px;
+  flex-wrap: wrap;
+}
+.layout header .actions {
+  align-items: center;
+  margin: 0;
+}
+.layout button,
+.layout a,
+.layout h1,
+.layout h2 {
+  overflow-wrap: anywhere;
+}
+.layout .section-heading {
+  flex-wrap: wrap;
+}
+.layout .section-cards {
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+}
+[dir="rtl"] {
+  font-family: "Noto Sans Arabic", Tahoma, system-ui, sans-serif;
+}
+[dir="rtl"] .eyebrow,
+[dir="rtl"] .nav-label,
+[dir="rtl"] h1 {
+  letter-spacing: normal;
+}
+input[name="timezone"],
+input[type="datetime-local"] {
+  direction: ltr;
+  text-align: start;
+}
+input[name="title"],
+input[name="name"],
+input[name="display_name"],
+input[name="code"],
+textarea {
+  unicode-bidi: plaintext;
+}
+@media (max-width: 650px) {
+  .sidebar {
+    border-inline-end: 0;
+  }
+  .layout header {
+    align-items: flex-start;
+  }
+  .layout .stats {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* Secondary copy stays readable in every script at small sizes (WCAG AA). */
+.layout
+  :is(
+    small,
+    header,
+    footer,
+    .nav-label,
+    .sidebar-note small,
+    .intro > p:last-child
+  ) {
+  color: #58695f;
+}
