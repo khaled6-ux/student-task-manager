@@ -58,8 +58,8 @@ export const messages = {
   "No course": "بلا مقرر",
   Status: "الحالة",
   Priority: "الأولوية",
-  "Deadline ({zone}; your browser timezone)":
-    "الموعد النهائي ({zone}؛ المنطقة الزمنية للمتصفح)",
+  "Deadline ({zone}; your profile timezone)":
+    "الموعد النهائي ({zone}؛ المنطقة الزمنية لملفك الشخصي)",
   "Saving…": "جارٍ الحفظ…",
   "Save task": "حفظ المهمة",
   Cancel: "إلغاء",

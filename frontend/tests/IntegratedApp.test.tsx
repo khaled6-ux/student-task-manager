@@ -1087,3 +1087,85 @@ test("unknown mutation outcome blocks further writes until an explicit refresh",
     expect(screen.queryByRole("form")).not.toBeInTheDocument(),
   );
 });
+
+test("Shanghai 23:17 saves UTC and stays consistent in editor, dashboard and calendar", async () => {
+  await open();
+  fireEvent.click(screen.getByRole("button", { name: "New task" }));
+  const form = screen.getByRole("form", { name: "Create task" });
+  fireEvent.change(within(form).getByLabelText("Title"), {
+    target: { value: "Shanghai deadline" },
+  });
+  fireEvent.change(
+    within(form).getByLabelText(
+      "Deadline (Asia/Shanghai; your profile timezone)",
+    ),
+    { target: { value: "2026-10-26T23:17" } },
+  );
+  fireEvent.submit(form);
+  const edit = await screen.findByRole("button", {
+    name: "Edit Shanghai deadline",
+  });
+  expect(tasks.find((task) => task.title === "Shanghai deadline")?.due_at).toBe(
+    "2026-10-26T15:17:00.000Z",
+  );
+  const expected = new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Shanghai",
+    calendar: "gregory",
+  }).format(new Date("2026-10-26T15:17:00Z"));
+  expect(screen.getAllByText(expected)).toHaveLength(2);
+  fireEvent.click(edit);
+  expect(
+    screen.getByLabelText("Deadline (Asia/Shanghai; your profile timezone)"),
+  ).toHaveValue("2026-10-26T23:17");
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  navigate("/calendar");
+  const label = new Intl.DateTimeFormat("en", {
+    dateStyle: "full",
+    calendar: "gregory",
+    timeZone: "UTC",
+  }).format(new Date("2026-10-26T12:00:00Z"));
+  fireEvent.click(screen.getByRole("button", { name: `${label}, 1 task` }));
+  expect(screen.getByText("Shanghai deadline")).toBeInTheDocument();
+  expect(screen.getByText(expected)).toBeInTheDocument();
+});
+
+test.each([
+  ["Asia/Shanghai", "2026-10-26T15:17:42.123Z", "2026-10-26T23:17"],
+  ["America/Los_Angeles", "2026-11-01T09:30:42.123Z", "2026-11-01T01:30"],
+])("unchanged edit in %s retains exact timestamp", async (zone, iso, wall) => {
+  profile.timezone = zone;
+  tasks[0].due_at = iso;
+  await open();
+  fireEvent.click(screen.getByRole("button", { name: "Edit Worksheet" }));
+  expect(
+    screen.getByLabelText(`Deadline (${zone}; your profile timezone)`),
+  ).toHaveValue(wall);
+  fireEvent.change(screen.getByLabelText("Title"), {
+    target: { value: "Only title changed" },
+  });
+  fireEvent.submit(screen.getByRole("form", { name: "Edit task" }));
+  await screen.findByRole("button", { name: "Edit Only title changed" });
+  expect(tasks[0].due_at).toBe(iso);
+});
+test("profile-zone DST gaps reject submission without a write", async () => {
+  profile.timezone = "America/Los_Angeles";
+  await open();
+  fireEvent.click(screen.getByRole("button", { name: "New task" }));
+  fireEvent.change(screen.getByLabelText("Title"), {
+    target: { value: "DST gap" },
+  });
+  fireEvent.change(
+    screen.getByLabelText(
+      "Deadline (America/Los_Angeles; your profile timezone)",
+    ),
+    { target: { value: "2026-03-08T02:30" } },
+  );
+  fetchMock.mockClear();
+  fireEvent.submit(screen.getByRole("form", { name: "Create task" }));
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Choose a valid local date and time.",
+  );
+  expect(fetchMock).not.toHaveBeenCalled();
+});

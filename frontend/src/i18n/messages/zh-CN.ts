@@ -59,7 +59,8 @@ export const messages = {
   "No course": "未关联课程",
   Status: "状态",
   Priority: "优先级",
-  "Deadline ({zone}; your browser timezone)": "截止时间（{zone}；浏览器时区）",
+  "Deadline ({zone}; your profile timezone)":
+    "截止时间（{zone}；个人资料时区）",
   "Saving…": "正在保存…",
   "Save task": "保存任务",
   Cancel: "取消",
