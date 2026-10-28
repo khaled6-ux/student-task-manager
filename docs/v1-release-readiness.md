@@ -178,3 +178,5 @@ The main JS chunk remains above Vite's 500 kB advisory threshold; no warning lim
 - `frontend/tests/browser/i18n-check.mjs`
 - `frontend/tests/setup.ts`
 - `frontend/vite.config.ts`
+
+Subsequent deadline fix: task entry now uses the profile timezone, not the browser timezone. Unchanged stored timestamps are retained. See [profile-timezone deadlines](profile-timezone-deadlines.md); the preserved audit describes the earlier behavior.

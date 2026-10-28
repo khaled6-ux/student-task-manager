@@ -59,8 +59,8 @@ export const messages = {
   "No course": "No course",
   Status: "Status",
   Priority: "Priority",
-  "Deadline ({zone}; your browser timezone)":
-    "Deadline ({zone}; your browser timezone)",
+  "Deadline ({zone}; your profile timezone)":
+    "Deadline ({zone}; your profile timezone)",
   "Saving…": "Saving…",
   "Save task": "Save task",
   Cancel: "Cancel",

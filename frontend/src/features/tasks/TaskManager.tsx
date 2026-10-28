@@ -24,7 +24,8 @@ function TaskForm({
   close: () => void;
 }) {
   const { t, message } = useI18n();
-  const { api, mutate, courses, busy } = useData();
+  const { api, mutate, courses, busy, profile } = useData();
+  const timeZone = profile?.timezone ?? "UTC";
   const [error, setError] = useState("");
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -49,9 +50,9 @@ function TaskForm({
         category: form.get("category") as Category,
         course_id: String(form.get("course_id")) || null,
         due_at:
-          task && local === localInput(task.due_at)
+          task && local === localInput(task.due_at, timeZone)
             ? task.due_at
-            : instantFromLocal(local),
+            : instantFromLocal(local, timeZone),
       };
       await mutate({
         kind: "task-save",
@@ -137,13 +138,13 @@ function TaskForm({
         </label>
       </div>
       <label>
-        {t("Deadline ({zone}; your browser timezone)", {
-          zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        {t("Deadline ({zone}; your profile timezone)", {
+          zone: timeZone,
         })}
         <input
           name="due_at"
           type="datetime-local"
-          defaultValue={localInput(task?.due_at ?? null)}
+          defaultValue={localInput(task?.due_at ?? null, timeZone)}
         />
       </label>
       <div className="actions">

@@ -67,11 +67,11 @@ test("date-only grouping respects profile timezone and DST boundaries", () => {
   expect(dayKey("2026-03-08T10:01:00Z", "America/Los_Angeles")).toBe(
     "2026-03-08",
   );
-  expect(instantFromLocal("")).toBeNull();
-  expect(localInput(instantFromLocal("2026-10-23T12:30"))).toBe(
+  expect(instantFromLocal("", "UTC")).toBeNull();
+  expect(localInput(instantFromLocal("2026-10-23T12:30", "UTC"), "UTC")).toBe(
     "2026-10-23T12:30",
   );
-  expect(() => instantFromLocal("invalid")).toThrow("Choose a valid");
+  expect(() => instantFromLocal("invalid", "UTC")).toThrow("Choose a valid");
 });
 
 test("development timing redacts identifiers, queries, bodies and tokens and is off in production", async () => {
